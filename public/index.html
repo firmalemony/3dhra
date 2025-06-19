@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <title>3D Bludiště - Zombie Útěk</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: #222; }
+    #info { position: absolute; top: 10px; left: 10px; color: #fff; font-family: monospace; z-index: 10; }
+    #overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      font-size: 2em;
+      font-family: monospace;
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      flex-direction: column;
+    }
+    #overlay button {
+      margin-top: 20px;
+      font-size: 1em;
+      padding: 10px 30px;
+      border: none;
+      background: #00aaff;
+      color: #fff;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="info">
+    <b>Ovládání:</b> Šipky = pohyb, Mezerník = skok, C = střelba<br>
+    Utíkej před zombiem a najdi východ!
+  </div>
+  <div id="overlay"></div>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.153.0/build/three.min.js"></script>
+  <script src="../src/main.js"></script>
+</body>
+</html> 
