@@ -304,13 +304,13 @@ function loadLeaderboard() {
   })
   .then(res => res.json())
   .then(data => {
-    const scores = Array.isArray(data.record) ? data.record : [];
+    const scores = Array.isArray(data.record.scores) ? data.record.scores : [];
     let html = '<h3 style="margin:0 0 10px 0;">Žebříček</h3><ol style="text-align:left;margin:0;padding-left:20px;">';
     scores.forEach((s, i) => {
       if (i === 0) {
-        html += `<li style='color:#ff0;font-weight:bold;font-size:1.2em;'>🥇 <b>${s.name}</b> — ${s.score}</li>`;
+        html += `<li style='color:#ff0;font-weight:bold;font-size:1.2em;'>🥇 <b>${s.nick}</b> — ${s.score}</li>`;
       } else {
-        html += `<li><b>${s.name}</b> — ${s.score}</li>`;
+        html += `<li><b>${s.nick}</b> — ${s.score}</li>`;
       }
     });
     html += '</ol>';
