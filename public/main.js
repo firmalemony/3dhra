@@ -46,7 +46,7 @@ function showSoundUnlock() {
 
 // Základní nastavení Three.js
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x222233);
+scene.background = new THREE.Color(0x660000);
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.set(1, 2, 1);
@@ -315,7 +315,7 @@ function loadLeaderboard() {
   })
   .then(res => res.json())
   .then(data => {
-    const scores = data.record && Array.isArray(data.record) ? data.record : [];
+    const scores = Array.isArray(data.record) ? data.record : [];
     let html = '<h3 style="margin:0 0 10px 0;">Žebříček</h3><ol style="text-align:left;margin:0;padding-left:20px;">';
     scores.forEach((s, i) => {
       if (i === 0) {
@@ -543,4 +543,64 @@ function spawnBloodEffect(pos) {
     }
     animateDrop();
   }
+}
+
+// --- Hudba na pozadí ---
+let bgMusic;
+if (typeof Audio !== 'undefined') {
+  bgMusic = new Audio('bg-music.mp3');
+  bgMusic.loop = true;
+  bgMusic.volume = 0.3;
+  bgMusic.play().catch(()=>{});
+}
+
+// --- Červená obloha, mraky, měsíc ---
+scene.background = new THREE.Color(0x660000);
+// Měsíc
+const moonGeo = new THREE.SphereGeometry(3, 32, 32);
+const moonMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+const moon = new THREE.Mesh(moonGeo, moonMat);
+moon.position.set(10, 18, -10);
+scene.add(moon);
+// Mraky
+for (let i = 0; i < 7; i++) {
+  const cloudGeo = new THREE.SphereGeometry(2 + Math.random()*2, 24, 24);
+  const cloudMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 });
+  const cloud = new THREE.Mesh(cloudGeo, cloudMat);
+  cloud.position.set(Math.random()*40-20, 15+Math.random()*4, Math.random()*40-20);
+  scene.add(cloud);
+}
+
+// --- Profi hráč: koule s texturou ---
+const loader = new THREE.TextureLoader();
+playerModel.clear();
+const playerBodyGeo = new THREE.SphereGeometry(0.7, 32, 32);
+const playerBodyMat = new THREE.MeshLambertMaterial({ color: 0xffff00 });
+const playerBody = new THREE.Mesh(playerBodyGeo, playerBodyMat);
+playerBody.position.y = 0.7;
+playerModel.add(playerBody);
+const playerHeadGeo = new THREE.SphereGeometry(0.5, 32, 32);
+const playerHeadMat = new THREE.MeshLambertMaterial({ map: loader.load('face_player.png') });
+const playerHead = new THREE.Mesh(playerHeadGeo, playerHeadMat);
+playerHead.position.y = 1.5;
+playerModel.add(playerHead);
+scene.add(playerModel);
+
+// --- Více zombie ---
+const zombies = [];
+const zombieCount = 4;
+for (let i = 0; i < zombieCount; i++) {
+  const zombie = new THREE.Group();
+  const zBodyGeo = new THREE.SphereGeometry(0.7, 32, 32);
+  const zBodyMat = new THREE.MeshLambertMaterial({ color: 0x44ff44 });
+  const zBody = new THREE.Mesh(zBodyGeo, zBodyMat);
+  zBody.position.y = 0.7;
+  zombie.add(zBody);
+  const zHeadGeo = new THREE.SphereGeometry(0.5, 32, 32);
+  const zHeadMat = new THREE.MeshLambertMaterial({ map: loader.load('face_zombie.png') });
+  const zHead = new THREE.Mesh(zHeadGeo, zHeadMat);
+  zHead.position.y = 1.5;
+  zombie.add(zHead);
+  scene.add(zombie);
+  zombies.push({ model: zombie, alive: true, target: null });
 } 
