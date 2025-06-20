@@ -713,24 +713,34 @@ if (isMobile()) {
   if (leaderboardPanel) leaderboardPanel.style.display = 'none';
   const viewSwitch = document.getElementById('view-switch');
   if (viewSwitch) viewSwitch.style.display = 'none';
-  // Větší a intuitivnější tlačítka
+  // Ovládací panel přes spodní třetinu obrazovky s opravdu velkými tlačítky
   const controls = document.createElement('div');
   controls.id = 'mobile-controls';
   controls.style.position = 'fixed';
-  controls.style.bottom = '30px';
-  controls.style.left = '50%';
-  controls.style.transform = 'translateX(-50%)';
+  controls.style.left = '0';
+  controls.style.right = '0';
+  controls.style.bottom = '0';
+  controls.style.height = '33vh';
+  controls.style.background = 'rgba(0,0,0,0.85)';
   controls.style.zIndex = '9999';
   controls.style.display = 'flex';
-  controls.style.flexWrap = 'wrap';
-  controls.style.justifyContent = 'center';
+  controls.style.flexDirection = 'row';
+  controls.style.justifyContent = 'space-between';
+  controls.style.alignItems = 'center';
+  controls.style.padding = '0 2vw';
   controls.innerHTML = `
-    <button id="btnLeft" style="width:90px;height:90px;font-size:2.5em;margin:10px;border-radius:20px;">⬅️</button>
-    <button id="btnUp" style="width:90px;height:90px;font-size:2.5em;margin:10px;border-radius:20px;">⬆️</button>
-    <button id="btnRight" style="width:90px;height:90px;font-size:2.5em;margin:10px;border-radius:20px;">➡️</button>
-    <button id="btnDown" style="width:90px;height:90px;font-size:2.5em;margin:10px;border-radius:20px;">⬇️</button>
-    <button id="btnJump" style="width:110px;height:90px;font-size:2.5em;margin:10px 10px 10px 30px;border-radius:20px;">⏫<br><span style='font-size:0.5em;'>SKOK</span></button>
-    <button id="btnShoot" style="width:110px;height:90px;font-size:2.5em;margin:10px 10px 10px 30px;border-radius:20px;">🔫<br><span style='font-size:0.5em;'>STŘELA</span></button>
+    <div style=\"width:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;height:100%;\">
+      <div style='display:flex;flex-direction:row;justify-content:center;align-items:center;gap:4vw;margin-bottom:2vh;'>
+        <button id=\"btnLeft\" class=\"mobile-btn\">⬅️</button>
+        <button id=\"btnUp\" class=\"mobile-btn\">⬆️</button>
+        <button id=\"btnRight\" class=\"mobile-btn\">➡️</button>
+      </div>
+      <div style='display:flex;flex-direction:row;justify-content:center;align-items:center;gap:4vw;'>
+        <button id=\"btnJump\" class=\"mobile-btn\">⏫<br><span style="font-size:1em;">SKOK</span></button>
+        <button id=\"btnDown\" class=\"mobile-btn\">⬇️</button>
+        <button id=\"btnShoot\" class=\"mobile-btn\">🔫<br><span style="font-size:1em;">STŘELA</span></button>
+      </div>
+    </div>
   `;
   document.body.appendChild(controls);
   document.getElementById('btnLeft').ontouchstart = () => keys['ArrowLeft'] = true;
@@ -770,12 +780,18 @@ function updateMobileControls() {
   if (!controls) return;
   // Vždy zobraz kompletní ovládání
   controls.innerHTML = `
-    <button id="btnLeft" style="width:60px;height:60px;font-size:2em;margin:5px;">⬅️</button>
-    <button id="btnUp" style="width:60px;height:60px;font-size:2em;margin:5px;">⬆️</button>
-    <button id="btnRight" style="width:60px;height:60px;font-size:2em;margin:5px;">➡️</button>
-    <button id="btnDown" style="width:60px;height:60px;font-size:2em;margin:5px;">⬇️</button>
-    <button id="btnJump" style="width:60px;height:60px;font-size:2em;margin:5px;">⏫</button>
-    <button id="btnShoot" style="width:60px;height:60px;font-size:2em;margin:5px;">🔫</button>
+    <div style=\"width:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;height:100%;\">
+      <div style='display:flex;flex-direction:row;justify-content:center;align-items:center;gap:4vw;margin-bottom:2vh;'>
+        <button id=\"btnLeft\" class=\"mobile-btn\">⬅️</button>
+        <button id=\"btnUp\" class=\"mobile-btn\">⬆️</button>
+        <button id=\"btnRight\" class=\"mobile-btn\">➡️</button>
+      </div>
+      <div style='display:flex;flex-direction:row;justify-content:center;align-items:center;gap:4vw;'>
+        <button id=\"btnJump\" class=\"mobile-btn\">⏫<br><span style="font-size:1em;">SKOK</span></button>
+        <button id=\"btnDown\" class=\"mobile-btn\">⬇️</button>
+        <button id=\"btnShoot\" class=\"mobile-btn\">🔫<br><span style="font-size:1em;">STŘELA</span></button>
+      </div>
+    </div>
   `;
   // Re-nastav eventy
   document.getElementById('btnLeft').ontouchstart = () => keys['ArrowLeft'] = true;
