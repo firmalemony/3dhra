@@ -191,13 +191,16 @@ function getRandomFreeCell() {
   do {
     x = Math.floor(Math.random() * mazeWidth);
     z = Math.floor(Math.random() * mazeHeightCells);
-  } while (mazeMap[z][x] !== 0);
+  } while (
+    mazeMap[z][x] !== 0 ||
+    (endPosition && Math.abs(x * tileSize - endPosition.x) < 3 && Math.abs(z * tileSize - endPosition.z) < 3) // ne u cíle
+  );
   return {x, z};
 }
-function updateZombieTarget() {
-  // Pokud je hráč blízko, sleduj hráče
+function updateZombieTarget(forceRandom = false) {
+  // Pokud je hráč blízko a není forceRandom, sleduj hráče
   const dist = playerModel.position.distanceTo(zombieModel.position);
-  if (dist < 7) {
+  if (dist < 7 && !forceRandom) {
     zombieTarget = {x: playerModel.position.x / tileSize, z: playerModel.position.z / tileSize};
   } else {
     // Jinak náhodně bloudí
@@ -396,6 +399,9 @@ function animate() {
     const zNext = zombieModel.position.clone().add(zDir.multiplyScalar(0.035)); // pomalejší pohyb
     if (!checkCollision3rd(zNext)) {
       zombieModel.position.copy(zNext);
+    } else {
+      // Pokud narazí do zdi, vyber nové náhodné místo
+      updateZombieTarget(true);
     }
     zombieModel.lookAt(zTargetPos.x, zombieModel.position.y, zTargetPos.z);
   }
@@ -425,15 +431,22 @@ function animate() {
       score += 5;
       updateScore();
       playSound(hitAudio, 'zásah');
-      // Respawn zombie na náhodném místě
+      // Respawn zombie na náhodném místě (ne u hráče ani u cíle)
       setTimeout(() => {
-        let zx, zz;
+        let zx, zz, distToPlayer, distToEnd;
         do {
           zx = Math.floor(Math.random() * mazeWidth);
           zz = Math.floor(Math.random() * mazeHeightCells);
-        } while (mazeMap[zz][zx] !== 0 || (Math.abs(zx*tileSize-playerModel.position.x)<3 && Math.abs(zz*tileSize-playerModel.position.z)<3));
+          distToPlayer = Math.abs(zx * tileSize - playerModel.position.x) + Math.abs(zz * tileSize - playerModel.position.z);
+          distToEnd = endPosition ? Math.abs(zx * tileSize - endPosition.x) + Math.abs(zz * tileSize - endPosition.z) : 100;
+        } while (
+          mazeMap[zz][zx] !== 0 ||
+          distToPlayer < 3 ||
+          distToEnd < 3
+        );
         zombieModel.position.set(zx * tileSize, 0, zz * tileSize);
         scene.add(zombieModel);
+        updateZombieTarget(true);
       }, 700);
       return;
     }
