@@ -2,11 +2,11 @@
 let score = 0;
 let shootAudio, hitAudio, winAudio, loseAudio, flowerAudio;
 if (typeof Audio !== 'undefined') {
-  shootAudio = new Audio('https://cdn.pixabay.com/audio/2022/10/16/audio_12b6b7b7b7.mp3'); // ověřený výstřel
-  hitAudio = new Audio('https://cdn.pixabay.com/audio/2022/10/16/audio_12b6b7b7b7.mp3'); // zásah (stejný pro test)
-  winAudio = new Audio('https://cdn.pixabay.com/audio/2022/10/16/audio_12b6b7b7b7.mp3'); // výhra (stejný pro test)
-  loseAudio = new Audio('https://cdn.pixabay.com/audio/2022/10/16/audio_12b6b7b7b7.mp3'); // prohra (stejný pro test)
-  flowerAudio = new Audio('https://cdn.pixabay.com/audio/2022/10/16/audio_12b6b7b7b7.mp3'); // kytka (stejný pro test)
+  shootAudio = new Audio('shoot.mp3');
+  hitAudio = new Audio('shoot.mp3');
+  winAudio = new Audio('shoot.mp3');
+  loseAudio = new Audio('shoot.mp3');
+  flowerAudio = new Audio('shoot.mp3');
 }
 let soundUnlock = false;
 function playSound(audio, label) {
@@ -407,6 +407,10 @@ function animate() {
   camera.lookAt(playerModel.position.clone().add(new THREE.Vector3(0, 1, 0)));
 
   // --- Zombie AI ---
+  if (!zombieTarget || !('x' in zombieTarget) || !('z' in zombieTarget)) {
+    updateZombieTarget(true);
+  }
+  if (!endPosition) return; // ochrana před null
   let zTargetPos = new THREE.Vector3(zombieTarget.x * tileSize, 0, zombieTarget.z * tileSize);
   let zDir = zTargetPos.clone().sub(zombieModel.position);
   zDir.y = 0;
