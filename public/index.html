@@ -67,6 +67,25 @@
       -webkit-user-select: none;
       touch-action: manipulation;
     }
+    #score {
+      position: fixed;
+      top: 18px;
+      left: 50%;
+      right: auto;
+      transform: translateX(-50%);
+      color: #fff;
+      font-size: 2.6em;
+      font-family: monospace;
+      z-index: 20;
+      letter-spacing: 0.04em;
+      font-weight: bold;
+      text-shadow: 2px 2px 8px #000, 0 0 10px #00aaff;
+    }
+    @media (max-width: 800px) {
+      #info, #view-switch, #leaderboard-panel, #btnThird, #btnFirst, #btnTop {
+        display: none !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -75,7 +94,7 @@
     Utíkej před zombiem a najdi východ!
   </div>
   <div id="overlay"></div>
-  <div id="score" style="position:fixed;top:10px;right:20px;color:#fff;font-size:1.5em;font-family:monospace;z-index:20;">Skóre: 0</div>
+  <div id="score">Skóre: 0</div>
   <div id="leaderboard-panel" style="position:fixed;top:60px;right:20px;width:220px;background:rgba(0,0,0,0.7);color:#fff;font-size:1em;font-family:monospace;z-index:20;padding:10px 15px;border-radius:10px;min-height:120px;"></div>
   <script src="https://cdn.jsdelivr.net/npm/three@0.153.0/build/three.min.js"></script>
   <script src="main.js"></script>
