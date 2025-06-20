@@ -55,6 +55,9 @@ const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
+// --- Texture loader pro textury postav ---
+const loader = new THREE.TextureLoader();
+
 // Světlo
 const light = new THREE.DirectionalLight(0xffffff, 1);
 light.position.set(5, 10, 7.5);
@@ -79,7 +82,7 @@ const zBody = new THREE.Mesh(zBodyGeo, zBodyMat);
 zBody.position.y = 0.6;
 zombieModel.add(zBody);
 const zHeadGeo = new THREE.BoxGeometry(0.6, 0.6, 0.6);
-const zHeadMat = new THREE.MeshLambertMaterial({ color: 0x99ff99 });
+const zHeadMat = new THREE.MeshLambertMaterial({ map: loader.load('face_zombie.png') });
 const zHead = new THREE.Mesh(zHeadGeo, zHeadMat);
 zHead.position.y = 1.4;
 zombieModel.add(zHead);
@@ -541,7 +544,6 @@ if (typeof Audio !== 'undefined') {
 }
 
 // --- Profi hráč: koule s texturou ---
-const loader = new THREE.TextureLoader();
 playerModel.clear();
 const playerBodyGeo = new THREE.SphereGeometry(0.7, 32, 32);
 const playerBodyMat = new THREE.MeshLambertMaterial({ color: 0xffff00 });
