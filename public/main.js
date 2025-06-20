@@ -156,12 +156,31 @@ window.addEventListener('keydown', (e) => {
 });
 window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
+const JSONBIN_KEY = '$2a$10$fSrsZ6cY/r.2FW1xeDDLIOr0QDa1dZ.FW3GUbvIftDX3QT2Zif9ha';
+const JSONBIN_ID = '6853cba08a456b7966b0eb91';
+
+function saveScoreToJsonBin(score) {
+  fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_ID}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Master-Key': JSONBIN_KEY
+    },
+    body: JSON.stringify({ score: score, time: new Date().toISOString() })
+  })
+  .then(res => res.json())
+  .then(data => console.log('Skóre uloženo do JSONBin:', data))
+  .catch(err => console.error('Chyba při ukládání skóre:', err));
+}
+
 function showOverlay(msg) {
   const overlay = document.getElementById('overlay');
-  overlay.innerHTML = msg + '<br><button onclick="location.reload()">Hrát znovu</button>';
+  overlay.innerHTML = msg + '<br><br><b>Ovládání:</b> Šipky = pohyb, Mezerník = skok, C = střelba<br><br><button onclick="location.reload()">Hrát znovu</button>';
   overlay.style.display = 'flex';
   overlay.style.justifyContent = 'center';
   overlay.style.alignItems = 'center';
+  // Ulož skóre do JSONBin po konci hry
+  saveScoreToJsonBin(score);
 }
 
 // --- Hlavní smyčka ---
@@ -225,8 +244,14 @@ function animate() {
       scene.remove(zombieModel);
       scene.remove(b.mesh);
       bullets.splice(i, 1);
-      win = true;
-      showOverlay('Vyhrál jsi! Zombii jsi zničil!');
+      score++;
+      updateScore();
+      if (hitAudio) { hitAudio.currentTime = 0; hitAudio.play(); }
+      // Respawn zombie na start
+      setTimeout(() => {
+        zombieModel.position.set(10 * tileSize, 0, 1 * tileSize);
+        scene.add(zombieModel);
+      }, 800);
       return;
     }
     // Když střela narazí do zdi nebo je moc daleko
@@ -239,14 +264,18 @@ function animate() {
   // --- Prohra (zombie tě chytí) ---
   if (playerModel.position.distanceTo(zombieModel.position) < 1.2) {
     gameOver = true;
-    showOverlay('Prohrál jsi! Zombie tě dostal!');
+    if (loseAudio) { loseAudio.currentTime = 0; loseAudio.play(); }
+    showOverlay('Prohrál jsi! Zombie tě dostal!<br>Skóre: ' + score);
+    localStorage.setItem('3dhra-score', score);
     return;
   }
 
   // --- Výhra (dveře na konec) ---
   if (playerModel.position.distanceTo(endPosition) < 1.2) {
     win = true;
-    showOverlay('Vyhrál jsi! Našel jsi východ!');
+    if (winAudio) { winAudio.currentTime = 0; winAudio.play(); }
+    showOverlay('Vyhrál jsi! Našel jsi východ!<br>Skóre: ' + score);
+    localStorage.setItem('3dhra-score', score);
     return;
   }
 
@@ -260,4 +289,19 @@ window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
-}); 
+});
+
+let score = 0;
+function updateScore() {
+  document.getElementById('score').textContent = 'Skóre: ' + score;
+}
+
+// Zvuky
+let hitAudio, winAudio, loseAudio;
+if (typeof Audio !== 'undefined') {
+  hitAudio = new Audio('https://cdn.pixabay.com/audio/2022/03/15/audio_115b9b6b7e.mp3');
+  winAudio = new Audio('https://cdn.pixabay.com/audio/2022/03/15/audio_115b9b6b7e.mp3');
+  loseAudio = new Audio('https://cdn.pixabay.com/audio/2022/03/15/audio_115b9b6b7e.mp3');
+}
+
+updateScore(); 
