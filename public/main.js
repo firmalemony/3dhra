@@ -159,28 +159,69 @@ window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 const JSONBIN_KEY = '$2a$10$fSrsZ6cY/r.2FW1xeDDLIOr0QDa1dZ.FW3GUbvIftDX3QT2Zif9ha';
 const JSONBIN_ID = '6853cba08a456b7966b0eb91';
 
-function saveScoreToJsonBin(score) {
-  fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_ID}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Master-Key': JSONBIN_KEY
-    },
-    body: JSON.stringify({ score: score, time: new Date().toISOString() })
-  })
-  .then(res => res.json())
-  .then(data => console.log('Skóre uloženo do JSONBin:', data))
-  .catch(err => console.error('Chyba při ukládání skóre:', err));
-}
-
 function showOverlay(msg) {
   const overlay = document.getElementById('overlay');
-  overlay.innerHTML = msg + '<br><br><b>Ovládání:</b> Šipky = pohyb, Mezerník = skok, C = střelba<br><br><button onclick="location.reload()">Hrát znovu</button>';
+  overlay.innerHTML = msg +
+    '<br><br><b>Ovládání:</b> Šipky = pohyb, Mezerník = skok, C = střelba' +
+    '<br><br><input id="nickInput" maxlength="16" placeholder="Zadej svůj nick" style="font-size:1em;padding:5px;">' +
+    '<button id="saveScoreBtn" style="font-size:1em;margin-left:10px;padding:5px 20px;">Uložit skóre</button>' +
+    '<div id="leaderboard" style="margin-top:30px;"></div>';
   overlay.style.display = 'flex';
   overlay.style.justifyContent = 'center';
   overlay.style.alignItems = 'center';
-  // Ulož skóre do JSONBin po konci hry
-  saveScoreToJsonBin(score);
+  document.getElementById('saveScoreBtn').onclick = function() {
+    const nick = document.getElementById('nickInput').value.trim() || 'Anonym';
+    saveScoreToJsonBin(score, nick);
+  };
+  // Po načtení overlayu rovnou zobraz žebříček
+  loadLeaderboard();
+}
+
+function saveScoreToJsonBin(score, nick) {
+  // Nejprve načti stávající data
+  fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_ID}/latest`, {
+    headers: { 'X-Master-Key': JSONBIN_KEY }
+  })
+  .then(res => res.json())
+  .then(data => {
+    let scores = data.record && Array.isArray(data.record.scores) ? data.record.scores : [];
+    scores.push({ nick, score, time: new Date().toISOString() });
+    // Seřadit sestupně podle skóre, ponechat max 10
+    scores = scores.sort((a, b) => b.score - a.score).slice(0, 10);
+    // Uložit zpět
+    return fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_ID}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Master-Key': JSONBIN_KEY
+      },
+      body: JSON.stringify({ scores })
+    });
+  })
+  .then(() => loadLeaderboard())
+  .catch(err => {
+    document.getElementById('leaderboard').innerHTML = '<b style="color:red">Chyba při ukládání skóre!</b>';
+    console.error('Chyba při ukládání skóre:', err);
+  });
+}
+
+function loadLeaderboard() {
+  fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_ID}/latest`, {
+    headers: { 'X-Master-Key': JSONBIN_KEY }
+  })
+  .then(res => res.json())
+  .then(data => {
+    const scores = data.record && Array.isArray(data.record.scores) ? data.record.scores : [];
+    let html = '<h3>Žebříček</h3><ol style="text-align:left;">';
+    for (const s of scores) {
+      html += `<li><b>${s.nick}</b> — ${s.score}</li>`;
+    }
+    html += '</ol>';
+    document.getElementById('leaderboard').innerHTML = html;
+  })
+  .catch(() => {
+    document.getElementById('leaderboard').innerHTML = '<b style="color:red">Nelze načíst žebříček!</b>';
+  });
 }
 
 // --- Kytky (sbíratelné objekty) ---
