@@ -370,9 +370,13 @@ function animate() {
 
   // Výpočet nové pozice
   const forward = new THREE.Vector3(Math.sin(playerAngle), 0, Math.cos(playerAngle));
+  const prevPos = playerModel.position.clone();
   const nextPos = playerModel.position.clone().add(forward.clone().multiplyScalar(move * 0.15));
   nextPos.y = playerModel.position.y; // zachováme výšku při pohybu
-  if (!checkCollision3rd(nextPos)) {
+  const pushBack = checkCollision3rdPushBack(nextPos, prevPos);
+  if (pushBack) {
+    playerModel.position.copy(pushBack);
+  } else {
     playerModel.position.x = nextPos.x;
     playerModel.position.z = nextPos.z;
   }
@@ -405,12 +409,14 @@ function animate() {
   zDir.y = 0;
   if (zDir.length() > 0.1) {
     zDir.normalize();
-    const zNext = zombieModel.position.clone().add(zDir.multiplyScalar(0.035)); // pomalejší pohyb
-    if (!checkCollision3rd(zNext)) {
-      zombieModel.position.copy(zNext);
+    const zPrev = zombieModel.position.clone();
+    const zNext = zombieModel.position.clone().add(zDir.multiplyScalar(0.035));
+    const zPushBack = checkCollision3rdPushBack(zNext, zPrev);
+    if (zPushBack) {
+      zombieModel.position.copy(zPushBack);
+      updateZombieTarget(true); // vyber nové místo
     } else {
-      // Pokud narazí do zdi, vyber nové náhodné místo
-      updateZombieTarget(true);
+      zombieModel.position.copy(zNext);
     }
     zombieModel.lookAt(zTargetPos.x, zombieModel.position.y, zTargetPos.z);
   }
@@ -543,6 +549,32 @@ if (typeof Audio !== 'undefined') {
   bgMusic.play().catch(()=>{});
 }
 
+// --- Overlay s tlačítkem Start ---
+const startOverlay = document.createElement('div');
+startOverlay.id = 'startOverlay';
+startOverlay.style.position = 'fixed';
+startOverlay.style.top = '0';
+startOverlay.style.left = '0';
+startOverlay.style.right = '0';
+startOverlay.style.bottom = '0';
+startOverlay.style.background = 'rgba(0,0,0,0.85)';
+startOverlay.style.color = '#fff';
+startOverlay.style.fontSize = '2em';
+startOverlay.style.display = 'flex';
+startOverlay.style.justifyContent = 'center';
+startOverlay.style.alignItems = 'center';
+startOverlay.style.zIndex = '9999';
+startOverlay.innerHTML = '<button id="startBtn" style="font-size:2em;padding:20px 60px;border-radius:12px;background:#00aaff;color:#fff;border:none;cursor:pointer;">Start</button>';
+document.body.appendChild(startOverlay);
+
+let zvukyPovoleny = false;
+document.getElementById('startBtn').onclick = function() {
+  zvukyPovoleny = true;
+  startOverlay.remove();
+  if (bgMusic) try { bgMusic.play().catch(()=>{}); } catch {}
+  [shootAudio, hitAudio, winAudio, loseAudio, flowerAudio].forEach(a=>{try{a.play().catch(()=>{});}catch{}});
+};
+
 // --- Profi hráč: koule s texturou ---
 playerModel.clear();
 const playerBodyGeo = new THREE.SphereGeometry(0.7, 32, 32);
@@ -576,25 +608,14 @@ for (let i = 0; i < zombieCount; i++) {
   zombies.push({ model: zombie, alive: true, target: null });
 }
 
-// --- Unlock zvuků na první kliknutí ---
-document.addEventListener('click', function() {
-  [shootAudio, hitAudio, winAudio, loseAudio, flowerAudio].forEach(a=>{try{a.play().catch(()=>{});}catch{}});
-  if (bgMusic) try { bgMusic.play().catch(()=>{}); } catch {}
-}, { once: true });
-
-// --- Červená obloha, mraky, měsíc ---
-scene.background = new THREE.Color(0x660000);
-// Měsíc
-const moonGeo = new THREE.SphereGeometry(3, 32, 32);
-const moonMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-const moon = new THREE.Mesh(moonGeo, moonMat);
-moon.position.set(10, 18, -10);
-scene.add(moon);
-// Mraky
-for (let i = 0; i < 7; i++) {
-  const cloudGeo = new THREE.SphereGeometry(2 + Math.random()*2, 24, 24);
-  const cloudMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 });
-  const cloud = new THREE.Mesh(cloudGeo, cloudMat);
-  cloud.position.set(Math.random()*40-20, 15+Math.random()*4, Math.random()*40-20);
-  scene.add(cloud);
+// --- Push-back efekt při kolizi hráče ---
+function checkCollision3rdPushBack(pos, prevPos) {
+  const px = Math.floor((pos.x + tileSize/2) / tileSize);
+  const pz = Math.floor((pos.z + tileSize/2) / tileSize);
+  if (mazeMap[pz] && mazeMap[pz][px] === 1) {
+    // Odraz zpět
+    const pushDir = pos.clone().sub(prevPos).normalize();
+    return prevPos.clone().add(pushDir.multiplyScalar(-0.3));
+  }
+  return null;
 } 
