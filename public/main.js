@@ -346,31 +346,38 @@ if (!document.getElementById('timer')) {
   document.body.appendChild(timerDiv);
 }
 
-// --- Časovač ---
-let timeLeft = 60;
-function updateTimer() {
-  document.getElementById('timer').textContent = 'Čas: ' + timeLeft;
-}
-updateTimer();
-let timerInterval = setInterval(() => {
-  if (gameOver || win) return;
-  timeLeft--;
-  updateTimer();
-  if (timeLeft <= 0) {
-    gameOver = true;
-    showOverlay('Čas vypršel!<br>Skóre: ' + score);
-    localStorage.setItem('3dhra-score', score);
-    saveScoreToJsonBin(score);
-  }
-}, 1000);
-
 // --- Hlavní smyčka ---
+let spacePressed = false;
+let cPressed = false;
 function animate() {
   requestAnimationFrame(animate);
   if (gameOver || win) return;
 
   // Přepínání viditelnosti rukou podle pohledu
   updatePlayerVisibility();
+
+  // --- Mobilní skok ---
+  if (keys['Space'] && !spacePressed && !isJumping && !gameOver && !win) {
+    jumpVelocity = 0.22;
+    isJumping = true;
+    spacePressed = true;
+  }
+  if (!keys['Space']) spacePressed = false;
+
+  // --- Mobilní střela ---
+  if (keys['KeyC'] && !cPressed && !gameOver && !win) {
+    const bulletGeo = new THREE.SphereGeometry(0.2, 6, 6);
+    const bulletMat = new THREE.MeshLambertMaterial({ color: 0xffff00 });
+    const bullet = new THREE.Mesh(bulletGeo, bulletMat);
+    bullet.position.copy(playerModel.position);
+    bullet.position.y += 1.2;
+    const dir = new THREE.Vector3(Math.sin(playerAngle), 0, Math.cos(playerAngle));
+    bullets.push({ mesh: bullet, dir, distance: 0 });
+    scene.add(bullet);
+    playSoundEffect('strela.mp3');
+    cPressed = true;
+  }
+  if (!keys['KeyC']) cPressed = false;
 
   // Pohyb hráče (šipky vpřed/vzad, otáčení)
   let move = 0;
@@ -516,7 +523,6 @@ function animate() {
     showOverlay('Prohrál jsi! Zombie tě dostal!<br>Skóre: ' + score);
     localStorage.setItem('3dhra-score', score);
     saveScoreToJsonBin(score);
-    clearInterval(timerInterval);
     return;
   }
 
@@ -524,12 +530,10 @@ function animate() {
   if (playerModel.position.distanceTo(endPosition) < 1.2) {
     win = true;
     playSoundEffect('vyhra.mp3');
-    score += timeLeft;
     updateScore();
     showOverlay('Vyhrál jsi! Našel jsi východ!<br>Skóre: ' + score);
     localStorage.setItem('3dhra-score', score);
     saveScoreToJsonBin(score);
-    clearInterval(timerInterval);
     return;
   }
 
@@ -743,16 +747,21 @@ if (isMobile()) {
     </div>
   `;
   document.body.appendChild(controls);
-  document.getElementById('btnLeft').ontouchstart = () => keys['ArrowLeft'] = true;
-  document.getElementById('btnLeft').ontouchend = () => keys['ArrowLeft'] = false;
-  document.getElementById('btnRight').ontouchstart = () => keys['ArrowRight'] = true;
-  document.getElementById('btnRight').ontouchend = () => keys['ArrowRight'] = false;
-  document.getElementById('btnUp').ontouchstart = () => keys['ArrowUp'] = true;
-  document.getElementById('btnUp').ontouchend = () => keys['ArrowUp'] = false;
-  document.getElementById('btnDown').ontouchstart = () => keys['ArrowDown'] = true;
-  document.getElementById('btnDown').ontouchend = () => keys['ArrowDown'] = false;
-  document.getElementById('btnJump').ontouchstart = () => { keys['Space'] = true; setTimeout(()=>{keys['Space']=false;}, 200); };
-  document.getElementById('btnShoot').ontouchstart = () => { keys['KeyC'] = true; setTimeout(()=>{keys['KeyC']=false;}, 200); };
+  // Přidám i click eventy pro lepší podporu na některých mobilech
+  const setBtn = (id, key) => {
+    const btn = document.getElementById(id);
+    btn.ontouchstart = btn.onmousedown = () => { keys[key] = true; };
+    btn.ontouchend = btn.onmouseup = btn.onmouseleave = () => { keys[key] = false; };
+  };
+  setBtn('btnLeft', 'ArrowLeft');
+  setBtn('btnRight', 'ArrowRight');
+  setBtn('btnUp', 'ArrowUp');
+  setBtn('btnDown', 'ArrowDown');
+  // Skok a střela jako krátký stisk
+  const btnJump = document.getElementById('btnJump');
+  btnJump.ontouchstart = btnJump.onmousedown = () => { keys['Space'] = true; setTimeout(()=>{keys['Space']=false;}, 200); };
+  const btnShoot = document.getElementById('btnShoot');
+  btnShoot.ontouchstart = btnShoot.onmousedown = () => { keys['KeyC'] = true; setTimeout(()=>{keys['KeyC']=false;}, 200); };
 }
 
 // --- Dynamické přehrávání zvukových efektů ---
