@@ -85,11 +85,12 @@ const mazeMap = generateMaze(mazeWidth, mazeHeightCells);
 const tileSize = 3;
 const mazeHeight = 1.2;
 let endPosition = null;
+let endMarker = null;
 
 // Přidám zvuk střely
 let shootAudio;
 if (typeof Audio !== 'undefined') {
-  shootAudio = new Audio('https://cdn.pixabay.com/audio/2022/07/26/audio_124bfa4c7e.mp3'); // jednoduchý zvuk výstřelu
+  shootAudio = new Audio('https://cdn.jsdelivr.net/gh/naptha/tiny-soundfonts@master/soundfonts/shotgun.mp3'); // ověřený výstřel
 }
 
 // Ovládací klávesy
@@ -122,12 +123,13 @@ for (let z = 0; z < mazeMap.length; z++) {
     }
     if (mazeMap[z][x] === 3) {
       endPosition = new THREE.Vector3(x * tileSize, 0, z * tileSize);
-      // Cíl - zelená kostka
-      const endGeo = new THREE.BoxGeometry(tileSize * 0.8, 1, tileSize * 0.8);
-      const endMat = new THREE.MeshLambertMaterial({ color: 0x00ff00 });
-      const endCube = new THREE.Mesh(endGeo, endMat);
-      endCube.position.set(x * tileSize, 0.5, z * tileSize);
-      scene.add(endCube);
+      // Cíl - křížek na zemi
+      const crossGeo = new THREE.PlaneGeometry(tileSize * 0.8, tileSize * 0.8);
+      const crossMat = new THREE.MeshBasicMaterial({ color: 0xff3333, side: THREE.DoubleSide });
+      endMarker = new THREE.Mesh(crossGeo, crossMat);
+      endMarker.position.set(x * tileSize, 0.01, z * tileSize);
+      endMarker.rotation.x = -Math.PI / 2;
+      scene.add(endMarker);
     }
   }
 }
@@ -187,17 +189,15 @@ window.addEventListener('keydown', (e) => {
     isJumping = true;
   }
   if (e.code === 'KeyC' && !gameOver && !win) {
-    // Střela vychází z hráče
     const bulletGeo = new THREE.SphereGeometry(0.2, 6, 6);
     const bulletMat = new THREE.MeshLambertMaterial({ color: 0xffff00 });
     const bullet = new THREE.Mesh(bulletGeo, bulletMat);
     bullet.position.copy(playerModel.position);
     bullet.position.y += 1.2;
-    // Směr střely podle směru pohybu (dopředu)
     const dir = new THREE.Vector3(Math.sin(playerAngle), 0, Math.cos(playerAngle));
     bullets.push({ mesh: bullet, dir, distance: 0 });
     scene.add(bullet);
-    if (shootAudio) { shootAudio.currentTime = 0; shootAudio.play(); }
+    playSound(shootAudio, 'výstřel');
   }
 });
 window.addEventListener('keyup', (e) => { keys[e.code] = false; });
@@ -363,7 +363,7 @@ function animate() {
       flowers.splice(i, 1);
       score++;
       updateScore();
-      if (hitAudio) { hitAudio.currentTime = 0; hitAudio.play(); }
+      playSound(flowerAudio, 'kytka');
     }
   }
 
@@ -372,19 +372,28 @@ function animate() {
     const b = bullets[i];
     b.mesh.position.add(b.dir.clone().multiplyScalar(0.7));
     b.distance += 0.7;
+    // Když střela narazí do zombie
     if (b.mesh.position.distanceTo(zombieModel.position) < 1.2) {
+      spawnBloodEffect(zombieModel.position.clone().add(new THREE.Vector3(0,1,0)));
       scene.remove(zombieModel);
       scene.remove(b.mesh);
       bullets.splice(i, 1);
       score += 5;
       updateScore();
-      if (hitAudio) { hitAudio.currentTime = 0; hitAudio.play(); }
+      playSound(hitAudio, 'zásah');
+      // Respawn zombie na náhodném místě
       setTimeout(() => {
-        zombieModel.position.set(endX * tileSize, 0, endZ * tileSize);
+        let zx, zz;
+        do {
+          zx = Math.floor(Math.random() * mazeWidth);
+          zz = Math.floor(Math.random() * mazeHeightCells);
+        } while (mazeMap[zz][zx] !== 0 || (Math.abs(zx*tileSize-playerModel.position.x)<3 && Math.abs(zz*tileSize-playerModel.position.z)<3));
+        zombieModel.position.set(zx * tileSize, 0, zz * tileSize);
         scene.add(zombieModel);
-      }, 800);
+      }, 700);
       return;
     }
+    // Když střela narazí do zdi nebo je moc daleko
     if (checkCollision3rd(b.mesh.position) || b.distance > 80) {
       scene.remove(b.mesh);
       bullets.splice(i, 1);
@@ -394,7 +403,7 @@ function animate() {
   // --- Prohra (zombie tě chytí) ---
   if (playerModel.position.distanceTo(zombieModel.position) < 1.2) {
     gameOver = true;
-    if (loseAudio) { loseAudio.currentTime = 0; loseAudio.play(); }
+    if (loseAudio) playSound(loseAudio, 'prohra');
     showOverlay('Prohrál jsi! Zombie tě dostal!<br>Skóre: ' + score);
     localStorage.setItem('3dhra-score', score);
     saveScoreToJsonBin(score);
@@ -405,7 +414,7 @@ function animate() {
   // --- Výhra (dveře na konec) ---
   if (playerModel.position.distanceTo(endPosition) < 1.2) {
     win = true;
-    if (winAudio) { winAudio.currentTime = 0; winAudio.play(); }
+    playSound(winAudio, 'výhra');
     score += timeLeft;
     updateScore();
     showOverlay('Vyhrál jsi! Našel jsi východ!<br>Skóre: ' + score);
@@ -433,15 +442,43 @@ function updateScore() {
 }
 
 // Zvuky
-let hitAudio, winAudio, loseAudio;
+let hitAudio, winAudio, loseAudio, flowerAudio;
+function playSound(audio, label) {
+  if (!audio) return;
+  audio.currentTime = 0;
+  audio.volume = 0.7;
+  audio.play().then(()=>console.log('Zvuk přehrán:', label)).catch(e=>console.warn('Zvuk blokován:', label, e));
+}
 if (typeof Audio !== 'undefined') {
   hitAudio = new Audio('https://cdn.pixabay.com/audio/2022/03/15/audio_115b9b6b7e.mp3');
   winAudio = new Audio('https://cdn.pixabay.com/audio/2022/03/15/audio_115b9b6b7e.mp3');
   loseAudio = new Audio('https://cdn.pixabay.com/audio/2022/03/15/audio_115b9b6b7e.mp3');
+  flowerAudio = new Audio('https://cdn.pixabay.com/audio/2022/03/15/audio_115b9b6b7e.mp3');
 }
 
 updateScore();
 
 // Načti žebříček při startu hry a každých 20 sekund aktualizuj
 loadLeaderboard();
-setInterval(loadLeaderboard, 20000); 
+setInterval(loadLeaderboard, 20000);
+
+// --- Efekt rozprsknutí zombie ---
+function spawnBloodEffect(pos) {
+  for (let i = 0; i < 18; i++) {
+    const geo = new THREE.SphereGeometry(0.12, 4, 4);
+    const mat = new THREE.MeshBasicMaterial({ color: 0xff2222 });
+    const drop = new THREE.Mesh(geo, mat);
+    drop.position.copy(pos);
+    scene.add(drop);
+    const dir = new THREE.Vector3(Math.random()-0.5, Math.random(), Math.random()-0.5).normalize();
+    let t = 0;
+    function animateDrop() {
+      if (t > 20) { scene.remove(drop); return; }
+      drop.position.add(dir.clone().multiplyScalar(0.18));
+      drop.position.y -= 0.03 * t;
+      t++;
+      requestAnimationFrame(animateDrop);
+    }
+    animateDrop();
+  }
+} 
