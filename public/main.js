@@ -708,20 +708,29 @@ function isMobile() {
   return /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
 }
 if (isMobile()) {
+  // Skryj žebříček, tabulku a přepínání pohledu na mobilu
+  const leaderboardPanel = document.getElementById('leaderboard-panel');
+  if (leaderboardPanel) leaderboardPanel.style.display = 'none';
+  const viewSwitch = document.getElementById('view-switch');
+  if (viewSwitch) viewSwitch.style.display = 'none';
+  // Větší a intuitivnější tlačítka
   const controls = document.createElement('div');
   controls.id = 'mobile-controls';
   controls.style.position = 'fixed';
-  controls.style.bottom = '20px';
+  controls.style.bottom = '30px';
   controls.style.left = '50%';
   controls.style.transform = 'translateX(-50%)';
   controls.style.zIndex = '9999';
+  controls.style.display = 'flex';
+  controls.style.flexWrap = 'wrap';
+  controls.style.justifyContent = 'center';
   controls.innerHTML = `
-    <button id="btnLeft" style="width:60px;height:60px;font-size:2em;margin:5px;">⬅️</button>
-    <button id="btnUp" style="width:60px;height:60px;font-size:2em;margin:5px;">⬆️</button>
-    <button id="btnRight" style="width:60px;height:60px;font-size:2em;margin:5px;">➡️</button>
-    <button id="btnDown" style="width:60px;height:60px;font-size:2em;margin:5px;">⬇️</button>
-    <button id="btnJump" style="width:60px;height:60px;font-size:2em;margin:5px;">⏫</button>
-    <button id="btnShoot" style="width:60px;height:60px;font-size:2em;margin:5px;">🔫</button>
+    <button id="btnLeft" style="width:90px;height:90px;font-size:2.5em;margin:10px;border-radius:20px;">⬅️</button>
+    <button id="btnUp" style="width:90px;height:90px;font-size:2.5em;margin:10px;border-radius:20px;">⬆️</button>
+    <button id="btnRight" style="width:90px;height:90px;font-size:2.5em;margin:10px;border-radius:20px;">➡️</button>
+    <button id="btnDown" style="width:90px;height:90px;font-size:2.5em;margin:10px;border-radius:20px;">⬇️</button>
+    <button id="btnJump" style="width:110px;height:90px;font-size:2.5em;margin:10px 10px 10px 30px;border-radius:20px;">⏫<br><span style='font-size:0.5em;'>SKOK</span></button>
+    <button id="btnShoot" style="width:110px;height:90px;font-size:2.5em;margin:10px 10px 10px 30px;border-radius:20px;">🔫<br><span style='font-size:0.5em;'>STŘELA</span></button>
   `;
   document.body.appendChild(controls);
   document.getElementById('btnLeft').ontouchstart = () => keys['ArrowLeft'] = true;
