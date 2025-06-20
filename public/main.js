@@ -3,50 +3,24 @@ let score = 0;
 let shootAudio, hitAudio, winAudio, loseAudio, flowerAudio;
 if (typeof Audio !== 'undefined') {
   shootAudio = new Audio('shoot.mp3');
-  hitAudio = new Audio('shoot.mp3');
-  winAudio = new Audio('shoot.mp3');
-  loseAudio = new Audio('shoot.mp3');
-  flowerAudio = new Audio('shoot.mp3');
+  hitAudio = new Audio('hit.mp3');
+  winAudio = new Audio('win.mp3');
+  loseAudio = new Audio('lose.mp3');
+  flowerAudio = new Audio('flower.mp3');
 }
 let soundUnlock = false;
+let zvukyPovoleny = false;
 function playSound(audio, label) {
-  if (!audio) return;
+  if (!audio || !zvukyPovoleny) return;
   audio.currentTime = 0;
   audio.volume = 0.7;
-  audio.play().then(()=>console.log('Zvuk přehrán:', label)).catch(e=>{
-    console.warn('Zvuk blokován:', label, e);
-    if (!soundUnlock) showSoundUnlock();
-  });
+  audio.play().catch(()=>{});
 }
-function showSoundUnlock() {
-  soundUnlock = true;
-  if (!document.getElementById('sound-unlock')) {
-    const d = document.createElement('div');
-    d.id = 'sound-unlock';
-    d.style.position = 'fixed';
-    d.style.top = '0';
-    d.style.left = '0';
-    d.style.right = '0';
-    d.style.bottom = '0';
-    d.style.background = 'rgba(0,0,0,0.7)';
-    d.style.color = '#fff';
-    d.style.fontSize = '2em';
-    d.style.display = 'flex';
-    d.style.justifyContent = 'center';
-    d.style.alignItems = 'center';
-    d.style.zIndex = '9999';
-    d.innerHTML = 'Klikni kamkoliv pro povolení zvuků';
-    d.onclick = () => {
-      [shootAudio, hitAudio, winAudio, loseAudio, flowerAudio].forEach(a=>{try{a.play().catch(()=>{});}catch{}});
-      d.remove();
-    };
-    document.body.appendChild(d);
-  }
-}
+function showSoundUnlock() { /* už nikdy nespouštět */ }
 
 // Základní nastavení Three.js
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x660000);
+scene.background = new THREE.Color(0x222233); // tmavě modrá až šedá
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.set(1, 2, 1);
@@ -63,9 +37,9 @@ const light = new THREE.DirectionalLight(0xffffff, 1);
 light.position.set(5, 10, 7.5);
 scene.add(light);
 
-// Podlaha
-const floorGeometry = new THREE.PlaneGeometry(40, 40);
-const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x444488 });
+// Podlaha - celá plocha, sytě červená
+const floorGeometry = new THREE.PlaneGeometry(100, 100); // větší plocha
+const floorMaterial = new THREE.MeshLambertMaterial({ color: 0xaa0000 }); // sytě červená (krev)
 const floor = new THREE.Mesh(floorGeometry, floorMaterial);
 floor.rotation.x = -Math.PI / 2;
 scene.add(floor);
@@ -82,7 +56,7 @@ const zBody = new THREE.Mesh(zBodyGeo, zBodyMat);
 zBody.position.y = 0.6;
 zombieModel.add(zBody);
 const zHeadGeo = new THREE.BoxGeometry(0.6, 0.6, 0.6);
-const zHeadMat = new THREE.MeshLambertMaterial({ map: loader.load('face_zombie.png') });
+const zHeadMat = new THREE.MeshLambertMaterial({ map: loader.load('face_zombie.jpg') });
 const zHead = new THREE.Mesh(zHeadGeo, zHeadMat);
 zHead.position.y = 1.4;
 zombieModel.add(zHead);
@@ -115,7 +89,7 @@ function generateMaze(width, height) {
 }
 
 // --- Vytvoření nové mapy při každém spuštění ---
-const mazeWidth = 13, mazeHeightCells = 11;
+const mazeWidth = 26, mazeHeightCells = 22; // 2x větší šířka i výška
 const mazeMap = generateMaze(mazeWidth, mazeHeightCells);
 const tileSize = 3;
 const mazeHeight = 1.2;
@@ -127,6 +101,9 @@ const keys = {};
 let jumpVelocity = 0;
 let isJumping = false;
 let groundY = 0;
+
+// --- Player model parts (global) ---
+let leftArm, rightArm, leftLeg, rightLeg, playerBody, playerHead;
 
 // Smazat staré zdi, pokud existují
 for (let i = scene.children.length - 1; i >= 0; i--) {
@@ -229,7 +206,7 @@ window.addEventListener('keydown', (e) => {
     const dir = new THREE.Vector3(Math.sin(playerAngle), 0, Math.cos(playerAngle));
     bullets.push({ mesh: bullet, dir, distance: 0 });
     scene.add(bullet);
-    playSound(shootAudio, 'výstřel');
+    playSoundEffect('strela.mp3');
   }
 });
 window.addEventListener('keyup', (e) => { keys[e.code] = false; });
@@ -237,39 +214,52 @@ window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 const JSONBIN_KEY = '$2a$10$WrMBljUhANFS39i2XwHfH.9.V8AkViUkOp81Bn51ouKwvbmzG2M7m';
 const JSONBIN_ID = '68550a218561e97a5027dd3f';
 
+// --- Pohledy kamery ---
+let cameraMode = 'third'; // 'third', 'first', 'top'
+function setCameraMode(mode) {
+  cameraMode = mode;
+}
+// Přepínací tlačítka
+const viewBtns = document.createElement('div');
+viewBtns.style.position = 'fixed';
+viewBtns.style.top = '10px';
+viewBtns.style.left = '50%';
+viewBtns.style.transform = 'translateX(-50%)';
+viewBtns.style.zIndex = '1000';
+viewBtns.innerHTML = `
+  <button id="btnThird">3rd person</button>
+  <button id="btnFirst">1st person</button>
+  <button id="btnTop">2D z vrchu</button>
+`;
+document.body.appendChild(viewBtns);
+document.getElementById('btnThird').onclick = () => setCameraMode('third');
+document.getElementById('btnFirst').onclick = () => setCameraMode('first');
+document.getElementById('btnTop').onclick = () => setCameraMode('top');
+
 function showOverlay(msg) {
   const overlay = document.getElementById('overlay');
   overlay.innerHTML = msg +
     '<br><br><b>Ovládání:</b> Šipky = pohyb, Mezerník = skok, C = střelba' +
     '<br><br><input id="nickInput" maxlength="16" placeholder="Zadej svůj nick" style="font-size:1em;padding:5px;">' +
-    '<button id="saveScoreBtn" style="font-size:1em;margin-left:10px;padding:5px 20px;">Uložit skóre</button>' +
+    '<button id="saveScoreBtn" style="font-size:1em;margin-left:10px;padding:5px 20px;" disabled>Uložit skóre</button>' +
     '<br><br><button onclick="location.reload()" style="font-size:1em;padding:5px 20px;">Hrát znovu</button>' +
-    '<br><br><button id="testSoundsBtn" style="font-size:1em;padding:5px 20px;">Test zvuků</button>' +
     '<div id="sound-error" style="color:red;margin-top:10px;"></div>';
   overlay.style.display = 'flex';
   overlay.style.justifyContent = 'center';
   overlay.style.alignItems = 'center';
-  document.getElementById('saveScoreBtn').onclick = function() {
-    const nick = document.getElementById('nickInput').value.trim() || 'Anonym';
+  const nickInput = document.getElementById('nickInput');
+  const saveBtn = document.getElementById('saveScoreBtn');
+  nickInput.addEventListener('input', () => {
+    saveBtn.disabled = !nickInput.value.trim();
+  });
+  saveBtn.onclick = function() {
+    const nick = nickInput.value.trim();
+    if (!nick) return;
     this.disabled = true;
     this.textContent = 'Ukládám...';
     saveScoreToJsonBin(score, nick, () => {
       this.textContent = 'Uloženo!';
     });
-  };
-  document.getElementById('testSoundsBtn').onclick = function() {
-    let ok = true;
-    [shootAudio, hitAudio, winAudio, loseAudio, flowerAudio].forEach(a => {
-      try {
-        a.currentTime = 0;
-        a.volume = 0.7;
-        a.play().catch(()=>{ok = false;});
-      } catch { ok = false; }
-    });
-    setTimeout(() => {
-      if (!ok) document.getElementById('sound-error').textContent = 'Zvuk není podporován v tomto prohlížeči nebo je blokován.';
-      else document.getElementById('sound-error').textContent = 'Zvuk by měl být slyšet.';
-    }, 500);
   };
 }
 
@@ -342,12 +332,30 @@ flowerPositions.forEach(pos => {
   flowers.push(flower);
 });
 
+// --- Přidej časovač vedle skóre, pokud není v HTML ---
+if (!document.getElementById('timer')) {
+  const timerDiv = document.createElement('div');
+  timerDiv.id = 'timer';
+  timerDiv.style.position = 'fixed';
+  timerDiv.style.top = '10px';
+  timerDiv.style.right = '170px';
+  timerDiv.style.color = '#fff';
+  timerDiv.style.fontSize = '1.5em';
+  timerDiv.style.fontFamily = 'monospace';
+  timerDiv.style.zIndex = '20';
+  document.body.appendChild(timerDiv);
+}
+
 // --- Časovač ---
 let timeLeft = 60;
+function updateTimer() {
+  document.getElementById('timer').textContent = 'Čas: ' + timeLeft;
+}
+updateTimer();
 let timerInterval = setInterval(() => {
   if (gameOver || win) return;
   timeLeft--;
-  document.getElementById('timer').textContent = 'Čas: ' + timeLeft;
+  updateTimer();
   if (timeLeft <= 0) {
     gameOver = true;
     showOverlay('Čas vypršel!<br>Skóre: ' + score);
@@ -360,6 +368,9 @@ let timerInterval = setInterval(() => {
 function animate() {
   requestAnimationFrame(animate);
   if (gameOver || win) return;
+
+  // Přepínání viditelnosti rukou podle pohledu
+  updatePlayerVisibility();
 
   // Pohyb hráče (šipky vpřed/vzad, otáčení)
   let move = 0;
@@ -391,13 +402,36 @@ function animate() {
     }
   }
 
-  // Panáček je nyní natočený podle směru pohybu/kamery
-  playerModel.rotation.y = -playerAngle;
+  // Přidej globální proměnnou pro směr těla hráče
+  let playerBodyDirection = 0;
+  if (move !== 0) {
+    playerBodyDirection = playerAngle;
+  }
+  // --- Rotace těla a končetin hráče ---
+  if (typeof playerBody !== 'undefined' && playerBody) playerBody.rotation.y = -playerBodyDirection;
+  if (typeof leftArm !== 'undefined' && leftArm) leftArm.rotation.y = -playerBodyDirection;
+  if (typeof rightArm !== 'undefined' && rightArm) rightArm.rotation.y = -playerBodyDirection;
+  if (typeof leftLeg !== 'undefined' && leftLeg) leftLeg.rotation.y = -playerBodyDirection;
+  if (typeof rightLeg !== 'undefined' && rightLeg) rightLeg.rotation.y = -playerBodyDirection;
+  // Hlava se stále natáčí podle playerAngle
+  if (typeof playerHead !== 'undefined' && playerHead) playerHead.rotation.y = -playerAngle;
 
-  // Kamera za hráčem
-  const camOffset = forward.clone().multiplyScalar(-4).add(new THREE.Vector3(0, 2.5, 0));
-  camera.position.copy(playerModel.position.clone().add(camOffset));
-  camera.lookAt(playerModel.position.clone().add(new THREE.Vector3(0, 1, 0)));
+  // Kamera podle režimu
+  if (cameraMode === 'third') {
+    // Kamera za hráčem
+    const camOffset = forward.clone().multiplyScalar(-4).add(new THREE.Vector3(0, 2.5, 0));
+    camera.position.copy(playerModel.position.clone().add(camOffset));
+    camera.lookAt(playerModel.position.clone().add(new THREE.Vector3(0, 1, 0)));
+  } else if (cameraMode === 'first') {
+    // Kamera v hlavě hráče
+    const forward = new THREE.Vector3(Math.sin(playerAngle), 0, Math.cos(playerAngle));
+    camera.position.copy(playerModel.position.clone().add(new THREE.Vector3(0, 1.1, 0)));
+    camera.lookAt(playerModel.position.clone().add(new THREE.Vector3(0, 1.1, 0)).add(forward));
+  } else if (cameraMode === 'top') {
+    // 2D pohled z vrchu
+    camera.position.set(playerModel.position.x, 30, playerModel.position.z);
+    camera.lookAt(playerModel.position.x, 0, playerModel.position.z);
+  }
 
   // --- Zombie AI ---
   if (!zombieTarget || !('x' in zombieTarget) || !('z' in zombieTarget)) {
@@ -428,7 +462,7 @@ function animate() {
       flowers.splice(i, 1);
       score++;
       updateScore();
-      playSound(flowerAudio, 'kytka');
+      playSoundEffect('kytka.mp3');
     }
   }
 
@@ -447,7 +481,7 @@ function animate() {
       bullets.splice(i, 1);
       score += 5;
       updateScore();
-      playSound(hitAudio, 'zásah');
+      playSoundEffect('strela.mp3');
       // Respawn zombie na náhodném místě (ne u hráče ani u cíle)
       setTimeout(() => {
         let zx, zz, distToPlayer, distToEnd;
@@ -478,7 +512,7 @@ function animate() {
   // --- Prohra (zombie tě chytí) ---
   if (playerModel.position.distanceTo(zombieModel.position) < 1.2) {
     gameOver = true;
-    if (loseAudio) playSound(loseAudio, 'prohra');
+    if (loseAudio) playSoundEffect('prohra.mp3');
     showOverlay('Prohrál jsi! Zombie tě dostal!<br>Skóre: ' + score);
     localStorage.setItem('3dhra-score', score);
     saveScoreToJsonBin(score);
@@ -489,7 +523,7 @@ function animate() {
   // --- Výhra (dveře na konec) ---
   if (playerModel.position.distanceTo(endPosition) < 1.2) {
     win = true;
-    playSound(winAudio, 'výhra');
+    playSoundEffect('vyhra.mp3');
     score += timeLeft;
     updateScore();
     showOverlay('Vyhrál jsi! Našel jsi východ!<br>Skóre: ' + score);
@@ -543,10 +577,9 @@ function spawnBloodEffect(pos) {
 // --- Hudba na pozadí ---
 let bgMusic;
 if (typeof Audio !== 'undefined') {
-  bgMusic = new Audio('bg-music.mp3');
+  bgMusic = new Audio('scary.mp3');
   bgMusic.loop = true;
-  bgMusic.volume = 0.3;
-  bgMusic.play().catch(()=>{});
+  bgMusic.volume = 0.4;
 }
 
 // --- Overlay s tlačítkem Start ---
@@ -567,7 +600,6 @@ startOverlay.style.zIndex = '9999';
 startOverlay.innerHTML = '<button id="startBtn" style="font-size:2em;padding:20px 60px;border-radius:12px;background:#00aaff;color:#fff;border:none;cursor:pointer;">Start</button>';
 document.body.appendChild(startOverlay);
 
-let zvukyPovoleny = false;
 document.getElementById('startBtn').onclick = function() {
   zvukyPovoleny = true;
   startOverlay.remove();
@@ -575,35 +607,86 @@ document.getElementById('startBtn').onclick = function() {
   [shootAudio, hitAudio, winAudio, loseAudio, flowerAudio].forEach(a=>{try{a.play().catch(()=>{});}catch{}});
 };
 
-// --- Profi hráč: koule s texturou ---
+// --- Profi hráč: hranatý Roblox styl ---
 playerModel.clear();
-const playerBodyGeo = new THREE.SphereGeometry(0.7, 32, 32);
+// Tělo
+const playerBodyGeo = new THREE.BoxGeometry(0.7, 1.1, 0.4);
 const playerBodyMat = new THREE.MeshLambertMaterial({ color: 0xffff00 });
-const playerBody = new THREE.Mesh(playerBodyGeo, playerBodyMat);
-playerBody.position.y = 0.7;
+playerBody = new THREE.Mesh(playerBodyGeo, playerBodyMat);
+playerBody.position.y = 0.55;
 playerModel.add(playerBody);
-const playerHeadGeo = new THREE.SphereGeometry(0.5, 32, 32);
-const playerHeadMat = new THREE.MeshLambertMaterial({ map: loader.load('face_player.png') });
-const playerHead = new THREE.Mesh(playerHeadGeo, playerHeadMat);
-playerHead.position.y = 1.5;
+// Hlava
+const playerHeadGeo = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+const playerHeadTexture = loader.load('face_player.jpg');
+const playerHeadMat = new THREE.MeshLambertMaterial({ map: playerHeadTexture });
+playerHead = new THREE.Mesh(playerHeadGeo, playerHeadMat);
+playerHead.position.y = 1.1;
 playerModel.add(playerHead);
+// Ruce
+const playerArmGeo = new THREE.BoxGeometry(0.18, 0.7, 0.18);
+const playerArmMat = new THREE.MeshLambertMaterial({ color: 0xffe066 });
+leftArm = new THREE.Mesh(playerArmGeo, playerArmMat);
+leftArm.position.set(-0.45, 0.85, 0);
+playerModel.add(leftArm);
+rightArm = new THREE.Mesh(playerArmGeo, playerArmMat);
+rightArm.position.set(0.45, 0.85, 0);
+playerModel.add(rightArm);
+// Nohy
+const playerLegGeo = new THREE.BoxGeometry(0.22, 0.7, 0.22);
+const playerLegMat = new THREE.MeshLambertMaterial({ color: 0x8888ff });
+leftLeg = new THREE.Mesh(playerLegGeo, playerLegMat);
+leftLeg.position.set(-0.18, 0.2, 0);
+playerModel.add(leftLeg);
+rightLeg = new THREE.Mesh(playerLegGeo, playerLegMat);
+rightLeg.position.set(0.18, 0.2, 0);
+playerModel.add(rightLeg);
 scene.add(playerModel);
 
-// --- Více zombie ---
+// --- Více zombie: hranaté, strašidelné ---
 const zombies = [];
 const zombieCount = 4;
 for (let i = 0; i < zombieCount; i++) {
   const zombie = new THREE.Group();
-  const zBodyGeo = new THREE.SphereGeometry(0.7, 32, 32);
-  const zBodyMat = new THREE.MeshLambertMaterial({ color: 0x44ff44 });
+  // Tělo
+  const zBodyGeo = new THREE.BoxGeometry(0.7, 1.1, 0.4);
+  const zBodyMat = new THREE.MeshLambertMaterial({ color: 0x225500 });
   const zBody = new THREE.Mesh(zBodyGeo, zBodyMat);
-  zBody.position.y = 0.7;
+  zBody.position.y = 0.55;
   zombie.add(zBody);
-  const zHeadGeo = new THREE.SphereGeometry(0.5, 32, 32);
-  const zHeadMat = new THREE.MeshLambertMaterial({ map: loader.load('face_zombie.png') });
+  // Hlava (větší, tmavě zelená, červené oči)
+  const zHeadGeo = new THREE.BoxGeometry(0.65, 0.65, 0.65);
+  const zHeadTexture = loader.load('face_zombie.jpg');
+  const zHeadMat = new THREE.MeshLambertMaterial({ map: zHeadTexture, color: 0x113300 });
   const zHead = new THREE.Mesh(zHeadGeo, zHeadMat);
-  zHead.position.y = 1.5;
+  zHead.position.y = 1.2;
   zombie.add(zHead);
+  // Ruce
+  const zArmGeo = new THREE.BoxGeometry(0.18, 0.7, 0.18);
+  const zArmMat = new THREE.MeshLambertMaterial({ color: 0x335500 });
+  const zLeftArm = new THREE.Mesh(zArmGeo, zArmMat);
+  zLeftArm.position.set(-0.45, 0.85, 0);
+  zombie.add(zLeftArm);
+  const zRightArm = new THREE.Mesh(zArmGeo, zArmMat);
+  zRightArm.position.set(0.45, 0.85, 0);
+  zombie.add(zRightArm);
+  // Nohy
+  const zLegGeo = new THREE.BoxGeometry(0.22, 0.7, 0.22);
+  const zLegMat = new THREE.MeshLambertMaterial({ color: 0x222200 });
+  const zLeftLeg = new THREE.Mesh(zLegGeo, zLegMat);
+  zLeftLeg.position.set(-0.18, 0.2, 0);
+  zombie.add(zLeftLeg);
+  const zRightLeg = new THREE.Mesh(zLegGeo, zLegMat);
+  zRightLeg.position.set(0.18, 0.2, 0);
+  zombie.add(zRightLeg);
+  // Červené oči (malé boxy)
+  const eyeGeo = new THREE.BoxGeometry(0.08, 0.08, 0.01);
+  const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff2222 });
+  const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+  leftEye.position.set(-0.13, 1.28, 0.34);
+  zombie.add(leftEye);
+  const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+  rightEye.position.set(0.13, 1.28, 0.34);
+  zombie.add(rightEye);
   scene.add(zombie);
   zombies.push({ model: zombie, alive: true, target: null });
 }
@@ -618,4 +701,85 @@ function checkCollision3rdPushBack(pos, prevPos) {
     return prevPos.clone().add(pushDir.multiplyScalar(-0.3));
   }
   return null;
-} 
+}
+
+// --- Mobilní verze: virtuální tlačítka ---
+function isMobile() {
+  return /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
+}
+if (isMobile()) {
+  const controls = document.createElement('div');
+  controls.id = 'mobile-controls';
+  controls.style.position = 'fixed';
+  controls.style.bottom = '20px';
+  controls.style.left = '50%';
+  controls.style.transform = 'translateX(-50%)';
+  controls.style.zIndex = '9999';
+  controls.innerHTML = `
+    <button id="btnLeft" style="width:60px;height:60px;font-size:2em;margin:5px;">⬅️</button>
+    <button id="btnUp" style="width:60px;height:60px;font-size:2em;margin:5px;">⬆️</button>
+    <button id="btnRight" style="width:60px;height:60px;font-size:2em;margin:5px;">➡️</button>
+    <button id="btnDown" style="width:60px;height:60px;font-size:2em;margin:5px;">⬇️</button>
+    <button id="btnJump" style="width:60px;height:60px;font-size:2em;margin:5px;">⏫</button>
+    <button id="btnShoot" style="width:60px;height:60px;font-size:2em;margin:5px;">🔫</button>
+  `;
+  document.body.appendChild(controls);
+  document.getElementById('btnLeft').ontouchstart = () => keys['ArrowLeft'] = true;
+  document.getElementById('btnLeft').ontouchend = () => keys['ArrowLeft'] = false;
+  document.getElementById('btnRight').ontouchstart = () => keys['ArrowRight'] = true;
+  document.getElementById('btnRight').ontouchend = () => keys['ArrowRight'] = false;
+  document.getElementById('btnUp').ontouchstart = () => keys['ArrowUp'] = true;
+  document.getElementById('btnUp').ontouchend = () => keys['ArrowUp'] = false;
+  document.getElementById('btnDown').ontouchstart = () => keys['ArrowDown'] = true;
+  document.getElementById('btnDown').ontouchend = () => keys['ArrowDown'] = false;
+  document.getElementById('btnJump').ontouchstart = () => { keys['Space'] = true; setTimeout(()=>{keys['Space']=false;}, 200); };
+  document.getElementById('btnShoot').ontouchstart = () => { keys['KeyC'] = true; setTimeout(()=>{keys['KeyC']=false;}, 200); };
+}
+
+// --- Dynamické přehrávání zvukových efektů ---
+function playSoundEffect(src) {
+  if (!zvukyPovoleny) return;
+  const audio = new Audio(src);
+  audio.volume = 0.7;
+  audio.play().catch(()=>{});
+}
+
+// --- Přepínání viditelnosti rukou podle pohledu ---
+function updatePlayerVisibility() {
+  if (cameraMode === 'first') {
+    if (leftArm) leftArm.visible = false;
+    if (rightArm) rightArm.visible = false;
+  } else {
+    if (leftArm) leftArm.visible = true;
+    if (rightArm) rightArm.visible = true;
+  }
+}
+
+// --- Mobilní ovládání: přepínání tlačítek podle pohledu ---
+function updateMobileControls() {
+  const controls = document.getElementById('mobile-controls');
+  if (!controls) return;
+  // Vždy zobraz kompletní ovládání
+  controls.innerHTML = `
+    <button id="btnLeft" style="width:60px;height:60px;font-size:2em;margin:5px;">⬅️</button>
+    <button id="btnUp" style="width:60px;height:60px;font-size:2em;margin:5px;">⬆️</button>
+    <button id="btnRight" style="width:60px;height:60px;font-size:2em;margin:5px;">➡️</button>
+    <button id="btnDown" style="width:60px;height:60px;font-size:2em;margin:5px;">⬇️</button>
+    <button id="btnJump" style="width:60px;height:60px;font-size:2em;margin:5px;">⏫</button>
+    <button id="btnShoot" style="width:60px;height:60px;font-size:2em;margin:5px;">🔫</button>
+  `;
+  // Re-nastav eventy
+  document.getElementById('btnLeft').ontouchstart = () => keys['ArrowLeft'] = true;
+  document.getElementById('btnLeft').ontouchend = () => keys['ArrowLeft'] = false;
+  document.getElementById('btnRight').ontouchstart = () => keys['ArrowRight'] = true;
+  document.getElementById('btnRight').ontouchend = () => keys['ArrowRight'] = false;
+  document.getElementById('btnUp').ontouchstart = () => keys['ArrowUp'] = true;
+  document.getElementById('btnUp').ontouchend = () => keys['ArrowUp'] = false;
+  document.getElementById('btnDown').ontouchstart = () => keys['ArrowDown'] = true;
+  document.getElementById('btnDown').ontouchend = () => keys['ArrowDown'] = false;
+  document.getElementById('btnJump').ontouchstart = () => { keys['Space'] = true; setTimeout(()=>{keys['Space']=false;}, 200); };
+  document.getElementById('btnShoot').ontouchstart = () => { keys['KeyC'] = true; setTimeout(()=>{keys['KeyC']=false;}, 200); };
+}
+
+// V animate() na začátek přidej:
+if (isMobile()) updateMobileControls(); 
