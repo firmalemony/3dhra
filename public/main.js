@@ -156,8 +156,8 @@ window.addEventListener('keydown', (e) => {
 });
 window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
-const JSONBIN_KEY = '$2a$10$fSrsZ6cY/r.2FW1xeDDLIOr0QDa1dZ.FW3GUbvIftDX3QT2Zif9ha';
-const JSONBIN_ID = '6853cba08a456b7966b0eb91';
+const JSONBIN_KEY = '$2a$10$3Tli50nCSi1s5Y4Eyr3c7uIvFlzf8Eb6Ijh7jt3NFzzQLzRPMN4Yi';
+const JSONBIN_ID = '68550a218561e97a5027dd3f';
 
 function showOverlay(msg) {
   const overlay = document.getElementById('overlay');
