@@ -434,12 +434,14 @@ function animate() {
   }
 
   // --- Střely ---
+  let zombieAlive = true;
   for (let i = bullets.length - 1; i >= 0; i--) {
     const b = bullets[i];
     b.mesh.position.add(b.dir.clone().multiplyScalar(0.7));
     b.distance += 0.7;
     // Když střela narazí do zombie
-    if (b.mesh.position.distanceTo(zombieModel.position) < 1.2) {
+    if (zombieAlive && b.mesh.position.distanceTo(zombieModel.position) < 1.5 && scene.children.includes(zombieModel)) {
+      zombieAlive = false;
       spawnBloodEffect(zombieModel.position.clone().add(new THREE.Vector3(0,1,0)));
       scene.remove(zombieModel);
       scene.remove(b.mesh);
@@ -462,6 +464,7 @@ function animate() {
         );
         zombieModel.position.set(zx * tileSize, 0, zz * tileSize);
         scene.add(zombieModel);
+        zombieAlive = true;
         updateZombieTarget(true);
       }, 700);
       return;
