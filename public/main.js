@@ -2,17 +2,46 @@
 let score = 0;
 let shootAudio, hitAudio, winAudio, loseAudio, flowerAudio;
 if (typeof Audio !== 'undefined') {
-  shootAudio = new Audio('https://cdn.jsdelivr.net/gh/naptha/tiny-soundfonts@master/soundfonts/shotgun.mp3'); // ověřený výstřel
-  hitAudio = new Audio('https://cdn.pixabay.com/audio/2022/03/15/audio_115b9b6b7e.mp3'); // zásah
-  winAudio = new Audio('https://cdn.pixabay.com/audio/2022/03/15/audio_115b9b6b7e.mp3'); // výhra
-  loseAudio = new Audio('https://cdn.pixabay.com/audio/2022/03/15/audio_115b9b6b7e.mp3'); // prohra
-  flowerAudio = new Audio('https://cdn.pixabay.com/audio/2022/03/15/audio_115b9b6b7e.mp3'); // kytka
+  shootAudio = new Audio('https://cdn.pixabay.com/audio/2022/10/16/audio_12b6b7b7b7.mp3'); // ověřený výstřel
+  hitAudio = new Audio('https://cdn.pixabay.com/audio/2022/10/16/audio_12b6b7b7b7.mp3'); // zásah (stejný pro test)
+  winAudio = new Audio('https://cdn.pixabay.com/audio/2022/10/16/audio_12b6b7b7b7.mp3'); // výhra (stejný pro test)
+  loseAudio = new Audio('https://cdn.pixabay.com/audio/2022/10/16/audio_12b6b7b7b7.mp3'); // prohra (stejný pro test)
+  flowerAudio = new Audio('https://cdn.pixabay.com/audio/2022/10/16/audio_12b6b7b7b7.mp3'); // kytka (stejný pro test)
 }
+let soundUnlock = false;
 function playSound(audio, label) {
   if (!audio) return;
   audio.currentTime = 0;
   audio.volume = 0.7;
-  audio.play().then(()=>console.log('Zvuk přehrán:', label)).catch(e=>console.warn('Zvuk blokován:', label, e));
+  audio.play().then(()=>console.log('Zvuk přehrán:', label)).catch(e=>{
+    console.warn('Zvuk blokován:', label, e);
+    if (!soundUnlock) showSoundUnlock();
+  });
+}
+function showSoundUnlock() {
+  soundUnlock = true;
+  if (!document.getElementById('sound-unlock')) {
+    const d = document.createElement('div');
+    d.id = 'sound-unlock';
+    d.style.position = 'fixed';
+    d.style.top = '0';
+    d.style.left = '0';
+    d.style.right = '0';
+    d.style.bottom = '0';
+    d.style.background = 'rgba(0,0,0,0.7)';
+    d.style.color = '#fff';
+    d.style.fontSize = '2em';
+    d.style.display = 'flex';
+    d.style.justifyContent = 'center';
+    d.style.alignItems = 'center';
+    d.style.zIndex = '9999';
+    d.innerHTML = 'Klikni kamkoliv pro povolení zvuků';
+    d.onclick = () => {
+      [shootAudio, hitAudio, winAudio, loseAudio, flowerAudio].forEach(a=>{try{a.play().catch(()=>{});}catch{}});
+      d.remove();
+    };
+    document.body.appendChild(d);
+  }
 }
 
 // Základní nastavení Three.js
@@ -267,11 +296,15 @@ function loadLeaderboard() {
   })
   .then(res => res.json())
   .then(data => {
-    const scores = data.record && Array.isArray(data.record.scores) ? data.record.scores : [];
+    const scores = data.record && Array.isArray(data.record) ? data.record : [];
     let html = '<h3 style="margin:0 0 10px 0;">Žebříček</h3><ol style="text-align:left;margin:0;padding-left:20px;">';
-    for (const s of scores) {
-      html += `<li><b>${s.nick}</b> — ${s.score}</li>`;
-    }
+    scores.forEach((s, i) => {
+      if (i === 0) {
+        html += `<li style='color:#ff0;font-weight:bold;font-size:1.2em;'>🥇 <b>${s.name}</b> — ${s.score}</li>`;
+      } else {
+        html += `<li><b>${s.name}</b> — ${s.score}</li>`;
+      }
+    });
     html += '</ol>';
     document.getElementById('leaderboard-panel').innerHTML = html;
   })
