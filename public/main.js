@@ -219,22 +219,6 @@ let cameraMode = 'third'; // 'third', 'first', 'top'
 function setCameraMode(mode) {
   cameraMode = mode;
 }
-// Přepínací tlačítka
-const viewBtns = document.createElement('div');
-viewBtns.style.position = 'fixed';
-viewBtns.style.top = '10px';
-viewBtns.style.left = '50%';
-viewBtns.style.transform = 'translateX(-50%)';
-viewBtns.style.zIndex = '1000';
-viewBtns.innerHTML = `
-  <button id="btnThird">3rd person</button>
-  <button id="btnFirst">1st person</button>
-  <button id="btnTop">2D z vrchu</button>
-`;
-document.body.appendChild(viewBtns);
-document.getElementById('btnThird').onclick = () => setCameraMode('third');
-document.getElementById('btnFirst').onclick = () => setCameraMode('first');
-document.getElementById('btnTop').onclick = () => setCameraMode('top');
 
 function showOverlay(msg) {
   const overlay = document.getElementById('overlay');
@@ -314,10 +298,10 @@ function loadLeaderboard() {
 // --- Kytky (sbíratelné objekty) ---
 const flowers = [];
 const flowerPositions = [];
-// Rozmístím 8 kytek na volná místa v bludišti (kromě startu/cíle)
+// Rozmístím 16 kytek na volná místa v bludišti (kromě startu/cíle)
 for (let z = 1; z < mazeMap.length - 1; z++) {
   for (let x = 1; x < mazeMap[z].length - 1; x++) {
-    if (mazeMap[z][x] === 0 && Math.random() < 0.13 && flowerPositions.length < 8) {
+    if (mazeMap[z][x] === 0 && Math.random() < 0.13 && flowerPositions.length < 16) {
       flowerPositions.push({x, z});
     }
   }
@@ -648,7 +632,7 @@ scene.add(playerModel);
 
 // --- Více zombie: hranaté, strašidelné ---
 const zombies = [];
-const zombieCount = 4;
+const zombieCount = 8;
 for (let i = 0; i < zombieCount; i++) {
   const zombie = new THREE.Group();
   // Tělo
@@ -717,6 +701,9 @@ if (isMobile()) {
   if (leaderboardPanel) leaderboardPanel.style.display = 'none';
   const viewSwitch = document.getElementById('view-switch');
   if (viewSwitch) viewSwitch.style.display = 'none';
+  // Skryj horní pokyny
+  const info = document.getElementById('info');
+  if (info) info.style.display = 'none';
   // Ovládací panel přes spodní třetinu obrazovky s opravdu velkými tlačítky
   const controls = document.createElement('div');
   controls.id = 'mobile-controls';
