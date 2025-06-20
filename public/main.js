@@ -164,7 +164,8 @@ function showOverlay(msg) {
   overlay.innerHTML = msg +
     '<br><br><b>Ovládání:</b> Šipky = pohyb, Mezerník = skok, C = střelba' +
     '<br><br><input id="nickInput" maxlength="16" placeholder="Zadej svůj nick" style="font-size:1em;padding:5px;">' +
-    '<button id="saveScoreBtn" style="font-size:1em;margin-left:10px;padding:5px 20px;">Uložit skóre</button>';
+    '<button id="saveScoreBtn" style="font-size:1em;margin-left:10px;padding:5px 20px;">Uložit skóre</button>' +
+    '<br><br><button onclick="location.reload()" style="font-size:1em;padding:5px 20px;">Hrát znovu</button>';
   overlay.style.display = 'flex';
   overlay.style.justifyContent = 'center';
   overlay.style.alignItems = 'center';
