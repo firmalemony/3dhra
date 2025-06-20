@@ -53,18 +53,35 @@ zHead.position.y = 1.4;
 zombieModel.add(zHead);
 scene.add(zombieModel);
 
-// --- Nové bludiště (větší, nižší zdi) ---
-const mazeMap = [
-  [1,1,1,1,1,1,1,1,1,1,1,1],
-  [1,2,0,0,0,1,0,0,0,0,3,1],
-  [1,0,1,1,0,1,0,1,1,0,0,1],
-  [1,0,1,0,0,0,0,1,0,0,1,1],
-  [1,0,1,0,1,1,0,1,0,1,0,1],
-  [1,0,0,0,1,0,0,0,0,1,0,1],
-  [1,1,1,0,1,0,1,1,0,1,0,1],
-  [1,0,0,0,0,0,1,0,0,0,0,1],
-  [1,1,1,1,1,1,1,1,1,1,1,1],
-];
+// --- Generátor náhodného bludiště (DFS) ---
+function generateMaze(width, height) {
+  // liché rozměry kvůli zdem
+  if (width % 2 === 0) width++;
+  if (height % 2 === 0) height++;
+  const maze = Array.from({length: height}, () => Array(width).fill(1));
+  function shuffle(arr) { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } }
+  function carve(x, y) {
+    maze[y][x] = 0;
+    const dirs = [[2,0],[-2,0],[0,2],[0,-2]];
+    shuffle(dirs);
+    for (const [dx,dy] of dirs) {
+      const nx = x+dx, ny = y+dy;
+      if (ny>0 && ny<height && nx>0 && nx<width && maze[ny][nx] === 1) {
+        maze[y+dy/2][x+dx/2] = 0;
+        carve(nx,ny);
+      }
+    }
+  }
+  carve(1,1);
+  // start a cíl
+  maze[1][1] = 2;
+  maze[height-2][width-2] = 3;
+  return maze;
+}
+
+// --- Vytvoření nové mapy při každém spuštění ---
+const mazeWidth = 13, mazeHeightCells = 11;
+const mazeMap = generateMaze(mazeWidth, mazeHeightCells);
 const tileSize = 3;
 const mazeHeight = 1.2;
 let endPosition = null;
@@ -115,8 +132,37 @@ for (let z = 0; z < mazeMap.length; z++) {
   }
 }
 
-// Zombie start na druhém konci bludiště
-zombieModel.position.set(10 * tileSize, 0, 1 * tileSize);
+// Najdi start a cíl pro zombie
+let startX = 1, startZ = 1, endX = mazeWidth-2, endZ = mazeHeightCells-2;
+for (let z = 0; z < mazeMap.length; z++) {
+  for (let x = 0; x < mazeMap[z].length; x++) {
+    if (mazeMap[z][x] === 2) { startX = x; startZ = z; }
+    if (mazeMap[z][x] === 3) { endX = x; endZ = z; }
+  }
+}
+zombieModel.position.set(endX * tileSize, 0, endZ * tileSize);
+
+// --- Zombie náhodný pohyb ---
+let zombieTarget = null;
+function getRandomFreeCell() {
+  let x, z;
+  do {
+    x = Math.floor(Math.random() * mazeWidth);
+    z = Math.floor(Math.random() * mazeHeightCells);
+  } while (mazeMap[z][x] !== 0);
+  return {x, z};
+}
+function updateZombieTarget() {
+  // Pokud je hráč blízko, sleduj hráče
+  const dist = playerModel.position.distanceTo(zombieModel.position);
+  if (dist < 7) {
+    zombieTarget = {x: playerModel.position.x / tileSize, z: playerModel.position.z / tileSize};
+  } else {
+    // Jinak náhodně bloudí
+    zombieTarget = getRandomFreeCell();
+  }
+}
+setInterval(updateZombieTarget, 2000);
 
 // --- Nové kolize ---
 function checkCollision3rd(pos) {
@@ -156,7 +202,7 @@ window.addEventListener('keydown', (e) => {
 });
 window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
-const JSONBIN_KEY = '$2a$10$3Tli50nCSi1s5Y4Eyr3c7uIvFlzf8Eb6Ijh7jt3NFzzQLzRPMN4Yi';
+const JSONBIN_KEY = '$2a$10$WrMBljUhANFS39i2XwHfH.9.V8AkViUkOp81Bn51ouKwvbmzG2M7m';
 const JSONBIN_ID = '68550a218561e97a5027dd3f';
 
 function showOverlay(msg) {
@@ -298,15 +344,16 @@ function animate() {
   camera.lookAt(playerModel.position.clone().add(new THREE.Vector3(0, 1, 0)));
 
   // --- Zombie AI ---
-  const zDir = playerModel.position.clone().sub(zombieModel.position);
+  let zTargetPos = new THREE.Vector3(zombieTarget.x * tileSize, 0, zombieTarget.z * tileSize);
+  let zDir = zTargetPos.clone().sub(zombieModel.position);
   zDir.y = 0;
   if (zDir.length() > 0.1) {
     zDir.normalize();
-    const zNext = zombieModel.position.clone().add(zDir.multiplyScalar(0.07));
+    const zNext = zombieModel.position.clone().add(zDir.multiplyScalar(0.035)); // pomalejší pohyb
     if (!checkCollision3rd(zNext)) {
       zombieModel.position.copy(zNext);
     }
-    zombieModel.lookAt(playerModel.position.x, zombieModel.position.y, playerModel.position.z);
+    zombieModel.lookAt(zTargetPos.x, zombieModel.position.y, zTargetPos.z);
   }
 
   // --- Sběr kytek ---
@@ -333,7 +380,7 @@ function animate() {
       updateScore();
       if (hitAudio) { hitAudio.currentTime = 0; hitAudio.play(); }
       setTimeout(() => {
-        zombieModel.position.set(10 * tileSize, 0, 1 * tileSize);
+        zombieModel.position.set(endX * tileSize, 0, endZ * tileSize);
         scene.add(zombieModel);
       }, 800);
       return;
