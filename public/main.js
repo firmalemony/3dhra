@@ -164,21 +164,21 @@ function showOverlay(msg) {
   overlay.innerHTML = msg +
     '<br><br><b>Ovládání:</b> Šipky = pohyb, Mezerník = skok, C = střelba' +
     '<br><br><input id="nickInput" maxlength="16" placeholder="Zadej svůj nick" style="font-size:1em;padding:5px;">' +
-    '<button id="saveScoreBtn" style="font-size:1em;margin-left:10px;padding:5px 20px;">Uložit skóre</button>' +
-    '<div id="leaderboard" style="margin-top:30px;"></div>';
+    '<button id="saveScoreBtn" style="font-size:1em;margin-left:10px;padding:5px 20px;">Uložit skóre</button>';
   overlay.style.display = 'flex';
   overlay.style.justifyContent = 'center';
   overlay.style.alignItems = 'center';
   document.getElementById('saveScoreBtn').onclick = function() {
     const nick = document.getElementById('nickInput').value.trim() || 'Anonym';
-    saveScoreToJsonBin(score, nick);
+    this.disabled = true;
+    this.textContent = 'Ukládám...';
+    saveScoreToJsonBin(score, nick, () => {
+      this.textContent = 'Uloženo!';
+    });
   };
-  // Po načtení overlayu rovnou zobraz žebříček
-  loadLeaderboard();
 }
 
-function saveScoreToJsonBin(score, nick) {
-  // Nejprve načti stávající data
+function saveScoreToJsonBin(score, nick, cb) {
   fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_ID}/latest`, {
     headers: { 'X-Master-Key': JSONBIN_KEY }
   })
@@ -186,9 +186,7 @@ function saveScoreToJsonBin(score, nick) {
   .then(data => {
     let scores = data.record && Array.isArray(data.record.scores) ? data.record.scores : [];
     scores.push({ nick, score, time: new Date().toISOString() });
-    // Seřadit sestupně podle skóre, ponechat max 10
     scores = scores.sort((a, b) => b.score - a.score).slice(0, 10);
-    // Uložit zpět
     return fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_ID}`, {
       method: 'PUT',
       headers: {
@@ -198,9 +196,9 @@ function saveScoreToJsonBin(score, nick) {
       body: JSON.stringify({ scores })
     });
   })
-  .then(() => loadLeaderboard())
+  .then(() => { loadLeaderboard(); if(cb) cb(); })
   .catch(err => {
-    document.getElementById('leaderboard').innerHTML = '<b style="color:red">Chyba při ukládání skóre!</b>';
+    if (document.getElementById('saveScoreBtn')) document.getElementById('saveScoreBtn').textContent = 'Chyba!';
     console.error('Chyba při ukládání skóre:', err);
   });
 }
@@ -212,15 +210,15 @@ function loadLeaderboard() {
   .then(res => res.json())
   .then(data => {
     const scores = data.record && Array.isArray(data.record.scores) ? data.record.scores : [];
-    let html = '<h3>Žebříček</h3><ol style="text-align:left;">';
+    let html = '<h3 style="margin:0 0 10px 0;">Žebříček</h3><ol style="text-align:left;margin:0;padding-left:20px;">';
     for (const s of scores) {
       html += `<li><b>${s.nick}</b> — ${s.score}</li>`;
     }
     html += '</ol>';
-    document.getElementById('leaderboard').innerHTML = html;
+    document.getElementById('leaderboard-panel').innerHTML = html;
   })
   .catch(() => {
-    document.getElementById('leaderboard').innerHTML = '<b style="color:red">Nelze načíst žebříček!</b>';
+    document.getElementById('leaderboard-panel').innerHTML = '<b style="color:red">Nelze načíst žebříček!</b>';
   });
 }
 
@@ -394,4 +392,8 @@ if (typeof Audio !== 'undefined') {
   loseAudio = new Audio('https://cdn.pixabay.com/audio/2022/03/15/audio_115b9b6b7e.mp3');
 }
 
-updateScore(); 
+updateScore();
+
+// Načti žebříček při startu hry a každých 20 sekund aktualizuj
+loadLeaderboard();
+setInterval(loadLeaderboard, 20000); 
