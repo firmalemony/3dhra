@@ -1,3 +1,20 @@
+// --- Globální proměnné a zvuky (musí být na začátku!) ---
+let score = 0;
+let shootAudio, hitAudio, winAudio, loseAudio, flowerAudio;
+if (typeof Audio !== 'undefined') {
+  shootAudio = new Audio('https://cdn.jsdelivr.net/gh/naptha/tiny-soundfonts@master/soundfonts/shotgun.mp3'); // ověřený výstřel
+  hitAudio = new Audio('https://cdn.pixabay.com/audio/2022/03/15/audio_115b9b6b7e.mp3'); // zásah
+  winAudio = new Audio('https://cdn.pixabay.com/audio/2022/03/15/audio_115b9b6b7e.mp3'); // výhra
+  loseAudio = new Audio('https://cdn.pixabay.com/audio/2022/03/15/audio_115b9b6b7e.mp3'); // prohra
+  flowerAudio = new Audio('https://cdn.pixabay.com/audio/2022/03/15/audio_115b9b6b7e.mp3'); // kytka
+}
+function playSound(audio, label) {
+  if (!audio) return;
+  audio.currentTime = 0;
+  audio.volume = 0.7;
+  audio.play().then(()=>console.log('Zvuk přehrán:', label)).catch(e=>console.warn('Zvuk blokován:', label, e));
+}
+
 // Základní nastavení Three.js
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x222233);
@@ -86,12 +103,6 @@ const tileSize = 3;
 const mazeHeight = 1.2;
 let endPosition = null;
 let endMarker = null;
-
-// Přidám zvuk střely
-let shootAudio;
-if (typeof Audio !== 'undefined') {
-  shootAudio = new Audio('https://cdn.jsdelivr.net/gh/naptha/tiny-soundfonts@master/soundfonts/shotgun.mp3'); // ověřený výstřel
-}
 
 // Ovládací klávesy
 const keys = {};
@@ -436,27 +447,9 @@ window.addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-let score = 0;
 function updateScore() {
   document.getElementById('score').textContent = 'Skóre: ' + score;
 }
-
-// Zvuky
-let hitAudio, winAudio, loseAudio, flowerAudio;
-function playSound(audio, label) {
-  if (!audio) return;
-  audio.currentTime = 0;
-  audio.volume = 0.7;
-  audio.play().then(()=>console.log('Zvuk přehrán:', label)).catch(e=>console.warn('Zvuk blokován:', label, e));
-}
-if (typeof Audio !== 'undefined') {
-  hitAudio = new Audio('https://cdn.pixabay.com/audio/2022/03/15/audio_115b9b6b7e.mp3');
-  winAudio = new Audio('https://cdn.pixabay.com/audio/2022/03/15/audio_115b9b6b7e.mp3');
-  loseAudio = new Audio('https://cdn.pixabay.com/audio/2022/03/15/audio_115b9b6b7e.mp3');
-  flowerAudio = new Audio('https://cdn.pixabay.com/audio/2022/03/15/audio_115b9b6b7e.mp3');
-}
-
-updateScore();
 
 // Načti žebříček při startu hry a každých 20 sekund aktualizuj
 loadLeaderboard();
