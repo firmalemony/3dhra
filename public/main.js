@@ -254,7 +254,9 @@ function showOverlay(msg) {
     '<br><br><b>Ovládání:</b> Šipky = pohyb, Mezerník = skok, C = střelba' +
     '<br><br><input id="nickInput" maxlength="16" placeholder="Zadej svůj nick" style="font-size:1em;padding:5px;">' +
     '<button id="saveScoreBtn" style="font-size:1em;margin-left:10px;padding:5px 20px;">Uložit skóre</button>' +
-    '<br><br><button onclick="location.reload()" style="font-size:1em;padding:5px 20px;">Hrát znovu</button>';
+    '<br><br><button onclick="location.reload()" style="font-size:1em;padding:5px 20px;">Hrát znovu</button>' +
+    '<br><br><button id="testSoundsBtn" style="font-size:1em;padding:5px 20px;">Test zvuků</button>' +
+    '<div id="sound-error" style="color:red;margin-top:10px;"></div>';
   overlay.style.display = 'flex';
   overlay.style.justifyContent = 'center';
   overlay.style.alignItems = 'center';
@@ -265,6 +267,20 @@ function showOverlay(msg) {
     saveScoreToJsonBin(score, nick, () => {
       this.textContent = 'Uloženo!';
     });
+  };
+  document.getElementById('testSoundsBtn').onclick = function() {
+    let ok = true;
+    [shootAudio, hitAudio, winAudio, loseAudio, flowerAudio].forEach(a => {
+      try {
+        a.currentTime = 0;
+        a.volume = 0.7;
+        a.play().catch(()=>{ok = false;});
+      } catch { ok = false; }
+    });
+    setTimeout(() => {
+      if (!ok) document.getElementById('sound-error').textContent = 'Zvuk není podporován v tomto prohlížeči nebo je blokován.';
+      else document.getElementById('sound-error').textContent = 'Zvuk by měl být slyšet.';
+    }, 500);
   };
 }
 
