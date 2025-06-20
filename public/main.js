@@ -183,6 +183,41 @@ function showOverlay(msg) {
   saveScoreToJsonBin(score);
 }
 
+// --- Kytky (sbíratelné objekty) ---
+const flowers = [];
+const flowerPositions = [];
+// Rozmístím 8 kytek na volná místa v bludišti (kromě startu/cíle)
+for (let z = 1; z < mazeMap.length - 1; z++) {
+  for (let x = 1; x < mazeMap[z].length - 1; x++) {
+    if (mazeMap[z][x] === 0 && Math.random() < 0.13 && flowerPositions.length < 8) {
+      flowerPositions.push({x, z});
+    }
+  }
+}
+flowerPositions.forEach(pos => {
+  const geo = new THREE.ConeGeometry(0.3, 0.7, 8);
+  const mat = new THREE.MeshLambertMaterial({ color: 0xff44cc });
+  const flower = new THREE.Mesh(geo, mat);
+  flower.position.set(pos.x * tileSize, 0.35, pos.z * tileSize);
+  flower.rotation.x = Math.PI;
+  scene.add(flower);
+  flowers.push(flower);
+});
+
+// --- Časovač ---
+let timeLeft = 60;
+let timerInterval = setInterval(() => {
+  if (gameOver || win) return;
+  timeLeft--;
+  document.getElementById('timer').textContent = 'Čas: ' + timeLeft;
+  if (timeLeft <= 0) {
+    gameOver = true;
+    showOverlay('Čas vypršel!<br>Skóre: ' + score);
+    localStorage.setItem('3dhra-score', score);
+    saveScoreToJsonBin(score);
+  }
+}, 1000);
+
 // --- Hlavní smyčka ---
 function animate() {
   requestAnimationFrame(animate);
@@ -234,27 +269,35 @@ function animate() {
     zombieModel.lookAt(playerModel.position.x, zombieModel.position.y, playerModel.position.z);
   }
 
+  // --- Sběr kytek ---
+  for (let i = flowers.length - 1; i >= 0; i--) {
+    if (playerModel.position.distanceTo(flowers[i].position) < 1.1) {
+      scene.remove(flowers[i]);
+      flowers.splice(i, 1);
+      score++;
+      updateScore();
+      if (hitAudio) { hitAudio.currentTime = 0; hitAudio.play(); }
+    }
+  }
+
   // --- Střely ---
   for (let i = bullets.length - 1; i >= 0; i--) {
     const b = bullets[i];
     b.mesh.position.add(b.dir.clone().multiplyScalar(0.7));
     b.distance += 0.7;
-    // Když střela narazí do zombie
     if (b.mesh.position.distanceTo(zombieModel.position) < 1.2) {
       scene.remove(zombieModel);
       scene.remove(b.mesh);
       bullets.splice(i, 1);
-      score++;
+      score += 5;
       updateScore();
       if (hitAudio) { hitAudio.currentTime = 0; hitAudio.play(); }
-      // Respawn zombie na start
       setTimeout(() => {
         zombieModel.position.set(10 * tileSize, 0, 1 * tileSize);
         scene.add(zombieModel);
       }, 800);
       return;
     }
-    // Když střela narazí do zdi nebo je moc daleko
     if (checkCollision3rd(b.mesh.position) || b.distance > 80) {
       scene.remove(b.mesh);
       bullets.splice(i, 1);
@@ -267,6 +310,8 @@ function animate() {
     if (loseAudio) { loseAudio.currentTime = 0; loseAudio.play(); }
     showOverlay('Prohrál jsi! Zombie tě dostal!<br>Skóre: ' + score);
     localStorage.setItem('3dhra-score', score);
+    saveScoreToJsonBin(score);
+    clearInterval(timerInterval);
     return;
   }
 
@@ -274,8 +319,12 @@ function animate() {
   if (playerModel.position.distanceTo(endPosition) < 1.2) {
     win = true;
     if (winAudio) { winAudio.currentTime = 0; winAudio.play(); }
+    score += timeLeft;
+    updateScore();
     showOverlay('Vyhrál jsi! Našel jsi východ!<br>Skóre: ' + score);
     localStorage.setItem('3dhra-score', score);
+    saveScoreToJsonBin(score);
+    clearInterval(timerInterval);
     return;
   }
 
