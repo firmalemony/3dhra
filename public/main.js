@@ -71,20 +71,6 @@ scene.add(floor);
 let playerAngle = 0; // úhel natočení hráče
 const playerModel = new THREE.Group();
 
-// Tělo panáčka
-const bodyGeo = new THREE.BoxGeometry(0.8, 1.2, 0.5);
-const bodyMat = new THREE.MeshLambertMaterial({ color: 0x00aaff });
-const body = new THREE.Mesh(bodyGeo, bodyMat);
-body.position.y = 0.6;
-playerModel.add(body);
-// Hlava
-const headGeo = new THREE.BoxGeometry(0.6, 0.6, 0.6);
-const headMat = new THREE.MeshLambertMaterial({ color: 0xffeecc });
-const head = new THREE.Mesh(headGeo, headMat);
-head.position.y = 1.4;
-playerModel.add(head);
-scene.add(playerModel);
-
 // --- Nový model zombie ---
 const zombieModel = new THREE.Group();
 const zBodyGeo = new THREE.BoxGeometry(0.8, 1.2, 0.5);
@@ -142,7 +128,7 @@ let groundY = 0;
 // Smazat staré zdi, pokud existují
 for (let i = scene.children.length - 1; i >= 0; i--) {
   const obj = scene.children[i];
-  if (obj.isMesh && obj.geometry.type === 'BoxGeometry' && obj !== body && obj !== head && obj !== zBody && obj !== zHead) {
+  if (obj.isMesh && obj.geometry.type === 'BoxGeometry' && obj !== zBody && obj !== zHead) {
     scene.remove(obj);
   }
 }
@@ -554,23 +540,6 @@ if (typeof Audio !== 'undefined') {
   bgMusic.play().catch(()=>{});
 }
 
-// --- Červená obloha, mraky, měsíc ---
-scene.background = new THREE.Color(0x660000);
-// Měsíc
-const moonGeo = new THREE.SphereGeometry(3, 32, 32);
-const moonMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-const moon = new THREE.Mesh(moonGeo, moonMat);
-moon.position.set(10, 18, -10);
-scene.add(moon);
-// Mraky
-for (let i = 0; i < 7; i++) {
-  const cloudGeo = new THREE.SphereGeometry(2 + Math.random()*2, 24, 24);
-  const cloudMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 });
-  const cloud = new THREE.Mesh(cloudGeo, cloudMat);
-  cloud.position.set(Math.random()*40-20, 15+Math.random()*4, Math.random()*40-20);
-  scene.add(cloud);
-}
-
 // --- Profi hráč: koule s texturou ---
 const loader = new THREE.TextureLoader();
 playerModel.clear();
@@ -603,4 +572,27 @@ for (let i = 0; i < zombieCount; i++) {
   zombie.add(zHead);
   scene.add(zombie);
   zombies.push({ model: zombie, alive: true, target: null });
+}
+
+// --- Unlock zvuků na první kliknutí ---
+document.addEventListener('click', function() {
+  [shootAudio, hitAudio, winAudio, loseAudio, flowerAudio].forEach(a=>{try{a.play().catch(()=>{});}catch{}});
+  if (bgMusic) try { bgMusic.play().catch(()=>{}); } catch {}
+}, { once: true });
+
+// --- Červená obloha, mraky, měsíc ---
+scene.background = new THREE.Color(0x660000);
+// Měsíc
+const moonGeo = new THREE.SphereGeometry(3, 32, 32);
+const moonMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+const moon = new THREE.Mesh(moonGeo, moonMat);
+moon.position.set(10, 18, -10);
+scene.add(moon);
+// Mraky
+for (let i = 0; i < 7; i++) {
+  const cloudGeo = new THREE.SphereGeometry(2 + Math.random()*2, 24, 24);
+  const cloudMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 });
+  const cloud = new THREE.Mesh(cloudGeo, cloudMat);
+  cloud.position.set(Math.random()*40-20, 15+Math.random()*4, Math.random()*40-20);
+  scene.add(cloud);
 } 
