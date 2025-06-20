@@ -214,8 +214,8 @@ function animate() {
     }
   }
 
-  // Panáček je vždy natočený dopředu (neotáčí se při pohybu)
-  playerModel.rotation.y = 0;
+  // Panáček je nyní natočený podle směru pohybu/kamery
+  playerModel.rotation.y = -playerAngle;
 
   // Kamera za hráčem
   const camOffset = forward.clone().multiplyScalar(-4).add(new THREE.Vector3(0, 2.5, 0));
